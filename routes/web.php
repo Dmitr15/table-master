@@ -1,14 +1,12 @@
 <?php
 
+use App\Http\Controllers\ProcessFileController;
+use App\Http\Controllers\FileController;
 use Illuminate\Support\Facades\Route;
 
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-// Route::get('/', function () {
-//     return view('welcome');
-// });
+Route::view('/', 'index')->name('index');
 
-Route::view('/index', 'index')->name('index');
+Route::resource('files', FileController::class);
 
-
+Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
