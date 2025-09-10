@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class FileController extends Controller
 {
@@ -27,8 +28,46 @@ class FileController extends Controller
      */
     public function store(Request $request)
     {
-        //
+
+        $request->validate([
+            'xls_file' => ['nullable', 'file', 'max:50000', 'mimes:xls,xlsx']
+        ]);
+
+        $path = null;
+        if ($request->hasFile('xls_file')) {
+            // Безопасное оригинальное имя
+            $originalName = $this->sanitizeFileName($request->xls_file->getClientOriginalName());
+
+            // Путь к файлу
+            $path = Storage::disk('local')->put('excel_files', $request->xls_file);
+            //dd($path);
+        }
+        //Storage::disk('local')->put('excel_files', $request->xls_file);
+
     }
+
+
+    private function sanitizeFileName($fileName)
+    {
+        // Удаляем небезопасные символы
+        $dangerousCharacters = array(" ", '"', "'", "&", "/", "\\", "?", "#", "%", "<", ">", "|", ":", ";", "*", "+", "=", "{", "}", "[", "]", ",", "~", "`", "!");
+        $fileName = str_replace($dangerousCharacters, '_', $fileName);
+
+        // Удаляем несколько подряд идущих подчеркиваний
+        $fileName = preg_replace('/_+/', '_', $fileName);
+
+        // Удаляем начальные и конечные подчеркивания/точки
+        $fileName = trim($fileName, '_.');
+
+        // Ограничиваем длину имени файла 
+        if (strlen($fileName) > 100) {
+            $fileName = substr($fileName, 0, 100);
+        }
+
+        return $fileName;
+    }
+
+
 
     /**
      * Display the specified resource.
