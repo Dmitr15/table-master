@@ -7,13 +7,15 @@
     <title>Table Master</title>
 </head>
 <body>
-    <form action="{{route('process.form')}}" method="POST" enctype="multipart/form-data">
+    <form action="{{route('files.store')}}" method="POST" enctype="multipart/form-data">
     @csrf
     
     <div>
         <label for="xls_file">Choose file</label>
         <input type="file" name="xls_file" id="xls_file">
     </div>
+
+    <button type="submit">Upload</button>
     </form>
 </body>
 </html>
