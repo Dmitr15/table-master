@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\UserFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class FileController extends Controller
 {
@@ -12,7 +14,9 @@ class FileController extends Controller
      */
     public function index()
     {
-        //
+        $files = UserFile::orderBy('id', 'desc')->get();
+
+        return view('dashboard', ['files' => $files]);
     }
 
     /**
@@ -41,8 +45,14 @@ class FileController extends Controller
             // Путь к файлу
             $path = Storage::disk('local')->put('excel_files', $request->xls_file);
             //dd($path);
+            //dd($originalName);
+
+
         }
         //Storage::disk('local')->put('excel_files', $request->xls_file);
+        $file = UserFile::create(['original_name' => $originalName, 'path' => $path]);
+
+        return back()->with('success', 'Your file was loaded');
 
     }
 
@@ -74,7 +84,51 @@ class FileController extends Controller
      */
     public function show(string $id)
     {
-        //
+
+        $file = UserFile::find($id);
+        //$absolutePath = Storage::disk('local')->path($file->path);
+        //dd($absolutePath, file_exists($absolutePath), Storage::disk('local')->exists($file->path));
+
+
+        $file = UserFile::find("$id");
+
+        if (!$file) {
+            throw new \Exception("File record not found.");
+        }
+
+        if (!Storage::disk('local')->exists($file->path)) {
+            $absolutePath = Storage::disk('local')->path($file->path);
+
+
+            $storageRoot = Storage::disk('local')->path('');
+            $fullPath = $storageRoot . $file->path;
+
+            abort(404, "File not found. "
+                . "Storage path: '{$file->path}'. "
+                . "Absolute path: '{$absolutePath}'. "
+                . "Full path: '{$fullPath}'. "
+                . "Storage root: '{$storageRoot}'");
+        }
+
+        $fileContent = Storage::disk('local')->get($file->path);
+
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+        file_put_contents($tempFilePath, $fileContent);
+
+        try {
+            $spreadsheet = IOFactory::load($tempFilePath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $data = $sheet->toArray();
+        } finally {
+            if (file_exists($tempFilePath)) {
+                unlink($tempFilePath);
+            }
+        }
+        //dd($data);
+
+
+        // //return $data;
+        return view('view', ['data' => $data, 'name' => $file->original_name]);
     }
 
     /**
