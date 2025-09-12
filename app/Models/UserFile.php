@@ -16,8 +16,8 @@ class UserFile extends Model
         'path'
     ];
 
-    public function file(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
+    // public function file(): BelongsTo
+    // {
+    //     return $this->belongsTo(User::class);
+    // }
 }
