@@ -152,6 +152,21 @@ class FileController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        try {
+            $file = UserFile::findOrFail($id);
+            if (Storage::disk('local')->exists($file->path)) {
+                Storage::disk('local')->delete($file->path);
+            }
+
+            $file->delete();
+            return back()->with('success', 'File successfully deleted');
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Если файл не найден в базе данных
+            return back()->with('error', 'File not found in database');
+        } catch (\Exception $e) {
+            // Любая другая ошибка
+            return back()->with('error', 'An error occurred while deleting the file: ' . $e->getMessage());
+        }
     }
 }
