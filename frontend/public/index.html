@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Table Master - мощный инструмент для конвертации, слияния и анализа табличных данных. Работа с Excel, визуализация бухгалтерской отчетности."
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Подключение шрифтов Google Fonts для Material-UI -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
+    />
+    
+    <!-- Подключение иконок Material-UI -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+    
+    <title>Table Master - Конвертер и анализатор табличных данных</title>
+  </head>
+  <body>
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+        <h2>Для работы приложения необходим JavaScript</h2>
+        <p>Пожалуйста, включите JavaScript в настройках вашего браузера и перезагрузите страницу.</p>
+        <p>This application requires JavaScript to be enabled in your browser.</p>
+      </div>
+    </noscript>
+    
+    <!-- Контейнер для React-приложения -->
+    <div id="root"></div>
+    
+    <!-- Fallback для старых браузеров -->
+    <script>
+      // Проверка поддерски современных возможностей JavaScript
+      if (typeof Promise !== 'function' || typeof Object.assign !== 'function') {
+        document.body.innerHTML = [
+          '<div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">',
+          '<h2>Ваш браузер устарел</h2>',
+          '<p>Для работы с Table Master требуется современный браузер.</p>',
+          '<p>Рекомендуем обновить браузер или использовать один из современных браузеров:</p>',
+          '<p>',
+          '<a href="https://www.google.com/chrome/" style="margin: 0 10px;">Chrome</a>',
+          '<a href="https://www.mozilla.org/firefox/" style="margin: 0 10px;">Firefox</a>',
+          '<a href="https://www.microsoft.com/edge" style="margin: 0 10px;">Edge</a>',
+          '</p>',
+          '</div>'
+        ].join('');
+      }
+    </script>
+  </body>
+</html>
