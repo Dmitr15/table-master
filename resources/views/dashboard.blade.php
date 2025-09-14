@@ -140,7 +140,8 @@
             gap: 0.5rem;
         }
 
-        .row__btn a {
+        .row__btn a,
+        .row__btn button {
             padding: 0.4rem 0.8rem;
             border: none;
             border-radius: 6px;
@@ -149,19 +150,30 @@
             font-weight: 500;
             color: #080808;
             transition: background 0.2s ease;
-
+            background: none;
+            font-family: inherit;
         }
 
-        .view a:hover {
+        .view a:hover,
+        .view button:hover {
             background-color: #648ce4;
         }
 
-        .delete a:hover {
+        .delete a:hover,
+        .delete button:hover {
             background-color: #d47474;
         }
 
-        .download a:hover {
+        .download a:hover,
+        .download button:hover {
             background-color: #6fb19c;
+        }
+
+        /* Стили для форм */
+        .delete-form {
+            display: inline;
+            margin: 0;
+            padding: 0;
         }
     </style>
 </head>
@@ -177,7 +189,6 @@
                             <li><a href="#">Home</a></li>
                             <li><a href="#">About</a></li>
                             <li><a href="#">Blog</a></li>
-
                             @auth
                                 <span>Hi there, {{Auth::user()->name}}</span>
                                 <form action="{{route('logout')}}" method="post" style="margin:0;">
@@ -193,9 +204,7 @@
 
             <!-- Main Content -->
             <div class="container main">
-
                 <main class="posts">
-
                     @foreach ($files as $file)
                         <article>
                             <h2>{{$file->original_name}}</h2>
@@ -207,8 +216,20 @@
                                     <div class="view">
                                         <a href="{{route('files.show', $file->id)}}">View</a>
                                     </div>
-                                    <div class="delete"><a href="#">Delete</a></div>
-                                    <div class="download"><a href="#">Download</a></div>
+                                    <div class="delete">
+                                        <form action="{{route('files.destroy', $file->id)}}" method="post">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="action-btn"
+                                                onclick="return confirm('Are you sure you want to delete this file?')">Delete</button>
+                                        </form>
+                                    </div>
+                                    <div class="download">
+                                        <form action="{{route('download', $file->id)}}" method="post">
+                                            @csrf
+                                            <button type="submit" class="action-btn">Download</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </article>
