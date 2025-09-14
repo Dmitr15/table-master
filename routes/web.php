@@ -6,6 +6,7 @@ use App\Http\Controllers\ConverterController;
 use App\Http\Controllers\MergerController;
 use App\Http\Controllers\SplitterController;
 use App\Http\Controllers\AnalyzerController;
+use App\Http\Controllers\DownloadController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -17,22 +18,24 @@ Route::resource('files', FileController::class);
 
 Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::post('/file/{id}/download', [DownloadController::class, 'download'])->name('download');
+
+// Route::get('/', function () {
+//     return view('welcome');
+// })->name('home');
 
 // Маршруты для функциональности Table Master
-Route::get('/converter', [ConverterController::class, 'index'])->name('converter');
-Route::post('/converter/process', [ConverterController::class, 'process'])->name('converter.process');
+// Route::get('/converter', [ConverterController::class, 'index'])->name('converter');
+// Route::post('/converter/process', [ConverterController::class, 'process'])->name('converter.process');
 
-Route::get('/merger', [MergerController::class, 'index'])->name('merger');
-Route::post('/merger/process', [MergerController::class, 'process'])->name('merger.process');
+// Route::get('/merger', [MergerController::class, 'index'])->name('merger');
+// Route::post('/merger/process', [MergerController::class, 'process'])->name('merger.process');
 
-Route::get('/splitter', [SplitterController::class, 'index'])->name('splitter');
-Route::post('/splitter/process', [SplitterController::class, 'process'])->name('splitter.process');
+// Route::get('/splitter', [SplitterController::class, 'index'])->name('splitter');
+// Route::post('/splitter/process', [SplitterController::class, 'process'])->name('splitter.process');
 
-Route::get('/analyzer', [AnalyzerController::class, 'index'])->name('analyzer');
-Route::post('/analyzer/process', [AnalyzerController::class, 'process'])->name('analyzer.process');
+// Route::get('/analyzer', [AnalyzerController::class, 'index'])->name('analyzer');
+// Route::post('/analyzer/process', [AnalyzerController::class, 'process'])->name('analyzer.process');
 
 // Для Single Page Application (если используете React как SPA)
 Route::get('/{any}', function () {
