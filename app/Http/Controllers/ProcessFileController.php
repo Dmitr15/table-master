@@ -723,7 +723,7 @@ class ProcessFileController extends Controller
             $isFirstRow = false;
 
             // Освобождаем память каждые 100 строк
-            if ($row->getRowIndex() % 50 === 0) {
+            if ($row->getRowIndex() % 100 === 0) {
                 gc_collect_cycles();
             }
         }
@@ -824,28 +824,26 @@ class ProcessFileController extends Controller
 
     public function convertExcelToHtmlViaSpout(string $id)
     {
-
         $file = UserFile::findOrFail($id);
 
         $fileExtension = pathinfo($file->original_name, PATHINFO_EXTENSION);
         if ($fileExtension === 'xlsx') {
-            //$reader = IOFactory::createReader('Xlsx');
+            $filePath = Storage::disk('local')->path($file->path);
+            $name = $file->original_name;
         } else {
-            //$reader = IOFactory::createReader('Xls');
+            $convergedResponse = $this->xlsToXlsxAdditional($id);
+            $filePath = $convergedResponse['path'];
+            $name = $convergedResponse['name'];
         }
-        //$file = UserFile::findOrFail($id);
-        //$filePath = Storage::disk('local')->path($file->path);
-        $filePathArr = $this->xlsToXlsxAdditional($id);
 
         $outputFilePath = tempnam(sys_get_temp_dir(), 'html_') . '.html';
 
         try {
             $reader = new Reader();
-            $reader->open($filePathArr['path']);
+            $reader->open($filePath);
 
             $htmlFile = fopen($outputFilePath, 'w');
-            //$this->writeHtmlHeader($htmlFile, pathinfo($filePathArr['name'], PATHINFO_FILENAME));
-            $this->writeHtmlHeader($htmlFile, $filePathArr['name']);
+            $this->writeHtmlHeader($htmlFile, $name);
 
             foreach ($reader->getSheetIterator() as $sheet) {
                 $isFirstRow = true;
@@ -874,7 +872,7 @@ class ProcessFileController extends Controller
                     $rowCount++;
 
                     // Освобождаем память каждые 100 строк
-                    if ($rowCount % 150 === 0) {
+                    if ($rowCount % 100 === 0) {
                         gc_collect_cycles();
                     }
                 }
@@ -886,8 +884,7 @@ class ProcessFileController extends Controller
             fclose($htmlFile);
             $reader->close();
 
-            //return response()->download($outputFilePath, pathinfo($filePathArr['name'], PATHINFO_FILENAME) . '.html')->deleteFileAfterSend(true);
-            return response()->download($outputFilePath, $filePathArr['name'] . '.html')->deleteFileAfterSend(true);
+            return response()->download($outputFilePath, $name . '.html')->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
             Log::error('Spout conversion error: ' . $e->getMessage());
