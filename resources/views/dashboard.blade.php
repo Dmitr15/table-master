@@ -230,6 +230,36 @@
                                             <button type="submit" class="action-btn">Download</button>
                                         </form>
                                     </div>
+                                    <div class="xlsxToXls">
+                                        <form action="{{route('xlsxToXls', $file->id)}}" method="post">
+                                            @csrf
+                                            <button type="submit" class="action-btn">Convert to xls</button>
+                                        </form>
+                                    </div>
+                                    <div class="xlsToXlsx">
+                                        <form action="{{route('xlsToXlsx', $file->id)}}" method="post">
+                                            @csrf
+                                            <button type="submit" class="action-btn">Convert to xlsx</button>
+                                        </form>
+                                    </div>
+                                    <div class="excelToOds">
+                                        <form action="{{route('excelToOds', $file->id)}}" method="post">
+                                            @csrf
+                                            <button type="submit" class="action-btn">Convert to ods</button>
+                                        </form>
+                                    </div>
+                                    <div class="excelToCsv">
+                                        <form action="{{route('excelToCsv', $file->id)}}" method="post">
+                                            @csrf
+                                            <button type="submit" class="action-btn">Convert to csv</button>
+                                        </form>
+                                    </div>
+                                    <div class="excelToHtml">
+                                        <form action="{{route('excelToHtml', $file->id)}}" method="post">
+                                            @csrf
+                                            <button type="submit" class="action-btn">Convert to html</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </article>
