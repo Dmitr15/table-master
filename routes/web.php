@@ -20,6 +20,16 @@ Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('proce
 
 Route::post('/file/{id}/download', [DownloadController::class, 'download'])->name('download');
 
+Route::post('/file/{id}/xlsxToXls', [ProcessFileController::class, 'xlsxToXls'])->name('xlsxToXls');
+
+Route::post('/file/{id}/xlsToXlsx', [ProcessFileController::class, 'xlsToXlsx'])->name('xlsToXlsx');
+
+Route::post('/file/{id}/excelToOds', [ProcessFileController::class, 'excelToOds'])->name('excelToOds');
+
+Route::post('/file/{id}/excelToCsv', [ProcessFileController::class, 'excelToCsv'])->name('excelToCsv');
+
+Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'convertExcelToHtmlViaSpout'])->name('excelToHtml');
+
 // Route::get('/', function () {
 //     return view('welcome');
 // })->name('home');
