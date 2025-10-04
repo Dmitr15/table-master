@@ -690,6 +690,8 @@ class ProcessFileController extends Controller
     /**
      * Оптимизированная конвертация больших листов
      */
+
+
     private function convertLargeSheetToHtml($sheet, string $outputFilePath): void
     {
         $htmlFile = fopen($outputFilePath, 'w');
@@ -761,12 +763,69 @@ class ProcessFileController extends Controller
      */
     private function writeHtmlHeader($fileHandle, string $title): void
     {
-        $styles = ".table-container { max-width: 100%; overflow-x: auto; }
-               table { border-collapse: collapse; width: 100%; }
-               th, td { padding: 8px; border: 1px solid #ddd; }
-               th { background-color: #f2f2f2; }";
+        // $styles = ".table-container { max-width: 100%; overflow-x: auto; }
+        //        table { border-collapse: collapse; width: 100%; }
+        //        th, td { padding: 8px; border: 1px solid #ddd; }
+        //        th { background-color: #f2f2f2; }";
 
-        fwrite($fileHandle, "<!DOCTYPE html><html><head>\n<meta charset=\"UTF-8\">\n<title>" . htmlspecialchars($title) . "</title>\n<style>" . $styles . "</style>\n</head><body><div class='table-container'><table>\n<caption>" . htmlspecialchars($title) . "</caption>");
+        $styles = ".table-container {
+            max-width: 100%;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            -pdf-keep-in-frame-mode: shrink;
+            font-family: DejaVu Sans;
+            color: #2d3748;
+            background: white;
+        }
+            body {
+            font-size: 12px;
+        }
+
+        caption {
+            padding: 1rem;
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #1a202c;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4a5568;
+            color: white;
+            font-weight: 600;
+            text-align: left;
+            padding: 1rem;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:nth-of-type(even) {
+            background-color: #f7fafc;
+        }
+
+        td:first-child {
+            border-right: 1px solid #e2e8f0;
+        }
+
+        tr {
+            transition: background-color 0.2s ease;
+        }
+
+        tr:hover {
+            background-color: #ebf8ff;
+        }";
+
+        fwrite($fileHandle, "<!DOCTYPE html><html><head>\n<meta charset=\"UTF-8\">\\n<style>" . $styles . "</style>\n</head><body><div class='table-container'><table>\n<caption>" . htmlspecialchars($title) . "</caption>");
         // fwrite($fileHandle, "<meta charset=\"UTF-8\">");
         // fwrite($fileHandle, "<title>" . htmlspecialchars($title) . "</title>");
         // fwrite($fileHandle, "<style>" . $styles . "</style>");
@@ -787,8 +846,7 @@ class ProcessFileController extends Controller
      */
     private function handleMultipleSheetsOptimized($spreadsheet, $tempFilePath, $file)
     {
-        $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR .
-            pathinfo($file->original_name, PATHINFO_FILENAME) . '_html.zip';
+        $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($file->original_name, PATHINFO_FILENAME) . '_html.zip';
 
         $zip = new \ZipArchive();
         if ($zip->open($zipFilePath, \ZipArchive::CREATE) === TRUE) {
@@ -810,15 +868,6 @@ class ProcessFileController extends Controller
 
         return response()->download($zipFilePath, pathinfo($file->original_name, PATHINFO_FILENAME) . '_html.zip')->deleteFileAfterSend(true);
     }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -844,7 +893,7 @@ class ProcessFileController extends Controller
 
             $htmlFile = fopen($outputFilePath, 'w');
             $this->writeHtmlHeader($htmlFile, $name);
-
+            
             foreach ($reader->getSheetIterator() as $sheet) {
                 $isFirstRow = true;
                 $rowCount = 0;
