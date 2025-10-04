@@ -9,30 +9,14 @@ use App\Http\Controllers\AnalyzerController;
 use App\Http\Controllers\DownloadController;
 use Illuminate\Support\Facades\Route;
 
-
-Route::view('/', 'index')->name('index');
+// Главная страница - ОСТАВЛЯЕМ ТОЛЬКО ОДИН МАРШРУТ
+Route::get('/', function () {
+    return view('welcome');
+})->name('home');
 
 Route::get('/dashboard', [FileController::class, 'index'])->name('dashboard');
-
 Route::resource('files', FileController::class);
-
 Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
-
-Route::post('/file/{id}/download', [DownloadController::class, 'download'])->name('download');
-
-Route::post('/file/{id}/xlsxToXls', [ProcessFileController::class, 'xlsxToXls'])->name('xlsxToXls');
-
-Route::post('/file/{id}/xlsToXlsx', [ProcessFileController::class, 'xlsToXlsx'])->name('xlsToXlsx');
-
-Route::post('/file/{id}/excelToOds', [ProcessFileController::class, 'excelToOds'])->name('excelToOds');
-
-Route::post('/file/{id}/excelToCsv', [ProcessFileController::class, 'excelToCsv'])->name('excelToCsv');
-
-Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'convertExcelToHtmlViaSpout'])->name('excelToHtml');
-
-// Route::get('/', function () {
-//     return view('welcome');
-// })->name('home');
 
 // Маршруты для функциональности Table Master
 // Route::get('/converter', [ConverterController::class, 'index'])->name('converter');
@@ -44,10 +28,5 @@ Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'convertExc
 // Route::get('/splitter', [SplitterController::class, 'index'])->name('splitter');
 // Route::post('/splitter/process', [SplitterController::class, 'process'])->name('splitter.process');
 
-// Route::get('/analyzer', [AnalyzerController::class, 'index'])->name('analyzer');
-// Route::post('/analyzer/process', [AnalyzerController::class, 'process'])->name('analyzer.process');
-
-// Для Single Page Application (если используете React как SPA)
-Route::get('/{any}', function () {
-    return view('app'); // Базовый шаблон, где монтируется React
-})->where('any', '.*');
+Route::get('/analyzer', [AnalyzerController::class, 'index'])->name('analyzer');
+Route::post('/analyzer/process', [AnalyzerController::class, 'process'])->name('analyzer.process');
