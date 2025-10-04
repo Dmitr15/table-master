@@ -99,7 +99,6 @@ class FileController extends Controller
         if (!Storage::disk('local')->exists($file->path)) {
             $absolutePath = Storage::disk('local')->path($file->path);
 
-
             $storageRoot = Storage::disk('local')->path('');
             $fullPath = $storageRoot . $file->path;
 
