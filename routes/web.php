@@ -11,12 +11,23 @@ use Illuminate\Support\Facades\Route;
 
 // Главная страница - ОСТАВЛЯЕМ ТОЛЬКО ОДИН МАРШРУТ
 Route::get('/', function () {
-    return view('welcome');
+    return view('index');
 })->name('home');
+
+Route::post('/download', [DownloadController::class, 'download'])->name('download');
 
 Route::get('/dashboard', [FileController::class, 'index'])->name('dashboard');
 Route::resource('files', FileController::class);
 Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
+Route::post('/file/{id}/xlsxToXls', [ProcessFileController::class, 'xlsxToXls'])->name('xlsxToXls');
+
+Route::post('/file/{id}/xlsToXlsx', [ProcessFileController::class, 'xlsToXlsx'])->name('xlsToXlsx');
+
+Route::post('/file/{id}/excelToOds', [ProcessFileController::class, 'excelToOds'])->name('excelToOds');
+
+Route::post('/file/{id}/excelToCsv', [ProcessFileController::class, 'excelToCsv'])->name('excelToCsv');
+
+Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'convertExcelToHtmlViaSpout'])->name('excelToHtml');
 
 // Маршруты для функциональности Table Master
 // Route::get('/converter', [ConverterController::class, 'index'])->name('converter');
