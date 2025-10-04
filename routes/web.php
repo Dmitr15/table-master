@@ -8,18 +8,14 @@ use App\Http\Controllers\SplitterController;
 use App\Http\Controllers\AnalyzerController;
 use Illuminate\Support\Facades\Route;
 
-
-Route::view('/', 'index')->name('index');
-
-Route::get('/dashboard', [FileController::class, 'index'])->name('dashboard');
-
-Route::resource('files', FileController::class);
-
-Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
-
+// Главная страница - ОСТАВЛЯЕМ ТОЛЬКО ОДИН МАРШРУТ
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+Route::get('/dashboard', [FileController::class, 'index'])->name('dashboard');
+Route::resource('files', FileController::class);
+Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
 
 // Маршруты для функциональности Table Master
 Route::get('/converter', [ConverterController::class, 'index'])->name('converter');
@@ -33,8 +29,3 @@ Route::post('/splitter/process', [SplitterController::class, 'process'])->name('
 
 Route::get('/analyzer', [AnalyzerController::class, 'index'])->name('analyzer');
 Route::post('/analyzer/process', [AnalyzerController::class, 'process'])->name('analyzer.process');
-
-// Для Single Page Application (если используете React как SPA)
-Route::get('/{any}', function () {
-    return view('app'); // Базовый шаблон, где монтируется React
-})->where('any', '.*');
