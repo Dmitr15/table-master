@@ -422,352 +422,13 @@ class ProcessFileController extends Controller
         return preg_replace('/[\/:*?"<>|]/', '_', $filename);
     }
 
-
-
-    // public function excelToHtml(string $id)
-    // {
-    //     $tempDir = sys_get_temp_dir();
-    //     if (!is_writable($tempDir)) {
-    //         Log::error('Temp directory is not writable', ['path' => $tempDir]);
-    //         throw new \Exception("Temporary directory is not writable");
-    //     }
-
-    //     $file = UserFile::findOrFail($id);
-    //     Log::info('file', ['file' => $file]);
-
-    //     // Получаем содержимое файла
-    //     $fileContent = Storage::disk('local')->get($file->path);
-
-    //     // Создаем временный файл
-    //     $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-    //     file_put_contents($tempFilePath, $fileContent);
-    //     Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
-
-    //     try {
-    //         // Определяем ридер по расширению файла
-    //         $fileExtension = pathinfo($file->original_name, PATHINFO_EXTENSION);
-    //         if ($fileExtension === 'xlsx') {
-    //             $reader = IOFactory::createReader('Xlsx');
-    //         } else {
-    //             $reader = IOFactory::createReader('Xls');
-    //         }
-
-    //         $reader->setReadDataOnly(true);
-
-    //         // Загружаем исходный excel файл
-    //         $spreadsheet = $reader->load($tempFilePath);
-    //         $sheets = $spreadsheet->getAllSheets();
-
-    //         if (count($sheets) === 1) {
-    //             $sheet = $sheets[0];
-    //             $sheetName = $this->sanitizeFilename($sheet->getTitle());
-
-    //             $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.html';
-    //             Log::info('Output file path created', ['outputFilePath' => $outputFilePath]);
-
-    //             $this->convertSheetToHtml($sheet, $outputFilePath);
-    //             Log::info("File converted");
-
-    //             $spreadsheet->disconnectWorksheets();
-    //             unset($spreadsheet);
-
-    //             return response()->download($outputFilePath, $sheetName . '.html')->deleteFileAfterSend(true);
-    //         } else {
-    //             $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($file->original_name, PATHINFO_FILENAME) . '_html.zip';
-    //             $zip = new \ZipArchive();
-
-    //             if ($zip->open($zipFilePath, \ZipArchive::CREATE) === TRUE) {
-    //                 foreach ($sheets as $sheet) {
-    //                     $sheetName = $this->sanitizeFilename($sheet->getTitle());
-    //                     $htmlTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.html';
-
-    //                     $this->convertSheetToHtml($sheet, $htmlTempPath);
-    //                     $zip->addFile($htmlTempPath, $sheetName . '.html');
-    //                 }
-    //                 $zip->close();
-
-    //                 foreach ($sheets as $sheet) {
-    //                     $sheetName = $this->sanitizeFilename($sheet->getTitle());
-    //                     $htmlTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.html';
-    //                     $this->safeUnlink($htmlTempPath);
-    //                 }
-    //             }
-    //             $spreadsheet->disconnectWorksheets();
-    //             unset($spreadsheet);
-
-    //             return response()->download($zipFilePath, pathinfo($file->original_name, PATHINFO_FILENAME) . '_html.zip')->deleteFileAfterSend(true);
-    //         }
-
-    //     } catch (\Exception $e) {
-    //         Log::error('HTML conversion error: ' . $e->getMessage());
-    //         throw $e;
-    //     } finally {
-    //         $this->safeUnlink($tempFilePath);
-    //     }
-    // }
-
-
-
-
-    // private function convertSheetToHtml($sheet, string $outputFilePath): void
-    // {
-    //     $style = ".table-container {
-    //         max-width: 100%; 
-    //         overflow-x: auto; 
-    //         margin-bottom: 20px; 
-    //         border-radius: 8px; 
-    //         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    //     } 
-    //     table { 
-    //         border-collapse: collapse; 
-    //         width: 100%; 
-    //         -pdf-keep-in-frame-mode: shrink; 
-    //         font-family: DejaVu Sans; 
-    //         color: #2d3748; background: white;
-    //     }
-    //     body {
-    //         font-size: 12px;
-    //     } 
-    //     caption {
-    //         padding: 1rem; 
-    //         font-size: 1.4rem; 
-    //         font-weight: 600; 
-    //         color: #1a202c; 
-    //         text-align: left; 
-    //     }
-    //     th { 
-    //         background-color: #4a5568; 
-    //         color: white; 
-    //         font-weight: 600; 
-    //         text-align: left;
-    //         padding: 1rem;
-    //         border-right: 1px solid #e2e8f0;
-    //     }
-    //     td {
-    //         padding: 1rem;
-    //         border-bottom: 1px solid #e2e8f0;
-    //     }
-    //     tr:nth-of-type(even) {
-    //         background-color: #f7fafc;
-    //     }
-    //     td:first-child {
-    //         border-right: 1px solid #e2e8f0;
-    //     }
-    //     tr {
-    //         transition: background-color 0.2s ease;
-    //     }
-    //     tr:hover {
-    //         background-color: #ebf8ff;
-    //     }
-    //     ";
-
-    //     $htmlFile = fopen($outputFilePath, 'w');
-    //     if (!$htmlFile) {
-    //         throw new \Exception("Cannot create file: " . $outputFilePath);
-    //     }
-    //     Log::info('htmlFile file created', ['path' => $htmlFile]);
-
-    //     // Добавляем BOM для корректного отображения кириллицы
-    //     fwrite($htmlFile, "\xEF\xBB\xBF");
-
-    //     $sheetName = $sheet->getTitle();
-
-    //     fwrite($htmlFile, "<!DOCTYPE html>");
-    //     fwrite($htmlFile, "<html lang=\"en\">");
-    //     fwrite($htmlFile, "<head>");
-    //     fwrite($htmlFile, "<meta charset=\"UTF-8\">");
-    //     fwrite($htmlFile, "<title>" . htmlspecialchars($sheetName) . "</title>");
-    //     fwrite($htmlFile, "<style>" . $style . "</style>");
-    //     fwrite($htmlFile, "</head>");
-    //     fwrite($htmlFile, "<body>");
-    //     fwrite($htmlFile, "<div class='table-container'>");
-    //     fwrite($htmlFile, "<table>");
-    //     fwrite($htmlFile, "<caption>" . htmlspecialchars($sheetName) . "</caption>");
-
-    //     // Получаем итератор строк для текущего листа
-    //     $rowIterator = $sheet->getRowIterator();
-
-    //     foreach ($rowIterator as $row) {
-    //         $cellIterator = $row->getCellIterator();
-    //         $cellIterator->setIterateOnlyExistingCells(false);
-
-    //         fwrite($htmlFile, "<tr>");
-
-    //         foreach ($cellIterator as $cell) {
-    //             $value = $cell->getValue();
-    //             if ($value === null) {
-    //                 $value = "";
-    //             } else {
-    //                 // Если ячейка содержит формулу, получаем вычисленное значение
-    //                 if ($cell->getDataType() == 'f') {
-    //                     $value = $cell->getCalculatedValue();
-    //                 }
-    //             }
-
-    //             // Определяем, заголовок это или обычная ячейка
-    //             if ($row->getRowIndex() == 1) {
-    //                 fwrite($htmlFile, "<th>");
-    //             } else {
-    //                 fwrite($htmlFile, "<td>");
-    //             }
-
-    //             // Экранируем HTML-символы и записываем значение
-    //             fwrite($htmlFile, htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-
-    //             // Закрываем ячейку
-    //             if ($row->getRowIndex() == 1) {
-    //                 fwrite($htmlFile, "</th>");
-    //             } else {
-    //                 fwrite($htmlFile, "</td>");
-    //             }
-    //         }
-    //         fwrite($htmlFile, "</tr>");
-    //     }
-    //     fwrite($htmlFile, "</table>");
-    //     fwrite($htmlFile, "</div>");
-    //     fwrite($htmlFile, "</body>");
-    //     fwrite($htmlFile, "</html>");
-
-    //     fclose($htmlFile);
-
-    //     Log::info('HTML file created', ['path' => $outputFilePath, 'size' => filesize($outputFilePath)]);
-    // }
-
-
     #########################################################################
-
-
-    public function convertExcelToHtml(string $id)
-    {
-        $tempDir = sys_get_temp_dir();
-        if (!is_writable($tempDir)) {
-            Log::error('Temp directory is not writable', ['path' => $tempDir]);
-            throw new \Exception("Temporary directory is not writable");
-        }
-
-        $file = UserFile::findOrFail($id);
-        Log::info('Starting HTML conversion for large file', ['file_id' => $id, 'rows' => 5000]);
-
-        // Увеличиваем лимит памяти для больших файлов
-        ini_set('memory_limit', '512M');
-
-        $fileContent = Storage::disk('local')->get($file->path);
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
-
-        try {
-            $fileExtension = pathinfo($file->original_name, PATHINFO_EXTENSION);
-            $reader = $fileExtension === 'xlsx' ? IOFactory::createReader('Xlsx') : IOFactory::createReader('Xls');
-
-            $reader->setReadDataOnly(true);
-            $spreadsheet = $reader->load($tempFilePath);
-
-            if ($spreadsheet->getSheetCount() === 1) {
-                $sheet = $spreadsheet->getSheet(0);
-                $sheetName = $this->sanitizeFilename($sheet->getTitle());
-                $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.html';
-
-                $this->convertLargeSheetToHtml($sheet, $outputFilePath);
-
-                $spreadsheet->disconnectWorksheets();
-                unset($spreadsheet);
-
-                return response()->download($outputFilePath, $sheetName . '.html')->deleteFileAfterSend(true);
-            } else {
-                // Многолистовой вариант с оптимизацией
-                return $this->handleMultipleSheetsOptimized($spreadsheet, $tempFilePath, $file);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('HTML conversion error for large file: ' . $e->getMessage());
-            throw $e;
-        } finally {
-            $this->safeUnlink($tempFilePath);
-        }
-    }
-
-
-    /**
-     * Оптимизированная конвертация больших листов
-     */
-
-
-    private function convertLargeSheetToHtml($sheet, string $outputFilePath): void
-    {
-        $htmlFile = fopen($outputFilePath, 'w');
-        if (!$htmlFile) {
-            throw new \Exception("Cannot create file: " . $outputFilePath);
-        }
-
-        // Записываем HTML постепенно, не накапливая в памяти
-        $this->writeHtmlHeader($htmlFile, $sheet->getTitle());
-
-        $rowIterator = $sheet->getRowIterator();
-        $isFirstRow = true;
-
-        foreach ($rowIterator as $row) {
-            $cellIterator = $row->getCellIterator();
-            $cellIterator->setIterateOnlyExistingCells(false);
-
-            fwrite($htmlFile, "<tr>");
-
-            foreach ($cellIterator as $cell) {
-                $value = $this->getCellValueOptimized($cell);
-
-                if ($isFirstRow) {
-                    fwrite($htmlFile, "<th>" . htmlspecialchars($value) . "</th>");
-                } else {
-                    fwrite($htmlFile, "<td>" . htmlspecialchars($value) . "</td>");
-                }
-            }
-
-            fwrite($htmlFile, "</tr>");
-            $isFirstRow = false;
-
-            // Освобождаем память каждые 100 строк
-            if ($row->getRowIndex() % 100 === 0) {
-                gc_collect_cycles();
-            }
-        }
-
-        $this->writeHtmlFooter($htmlFile);
-        fclose($htmlFile);
-    }
-
-
-    /**
-     * Получение значения ячейки с оптимизацией памяти
-     */
-    private function getCellValueOptimized($cell): string
-    {
-        $value = $cell->getValue();
-
-        if ($value === null) {
-            return "";
-        }
-
-        // Для формул - используем оптимизированный метод
-        if ($cell->getDataType() == 'f') {
-            try {
-                return (string) $cell->getCalculatedValue();
-            } catch (\Exception $e) {
-                return "#ERROR";
-            }
-        }
-
-        return (string) $value;
-    }
 
     /**
      * Постепенная запись HTML заголовка
      */
     private function writeHtmlHeader($fileHandle, string $title): void
     {
-        // $styles = ".table-container { max-width: 100%; overflow-x: auto; }
-        //        table { border-collapse: collapse; width: 100%; }
-        //        th, td { padding: 8px; border: 1px solid #ddd; }
-        //        th { background-color: #f2f2f2; }";
-
         $styles = ".table-container {
             max-width: 100%;
             overflow-x: auto;
@@ -825,12 +486,7 @@ class ProcessFileController extends Controller
             background-color: #ebf8ff;
         }";
 
-        fwrite($fileHandle, "<!DOCTYPE html><html><head>\n<meta charset=\"UTF-8\">\\n<style>" . $styles . "</style>\n</head><body><div class='table-container'><table>\n<caption>" . htmlspecialchars($title) . "</caption>");
-        // fwrite($fileHandle, "<meta charset=\"UTF-8\">");
-        // fwrite($fileHandle, "<title>" . htmlspecialchars($title) . "</title>");
-        // fwrite($fileHandle, "<style>" . $styles . "</style>");
-        // fwrite($fileHandle, "</head><body><div class='table-container'><table>");
-        // fwrite($fileHandle, "<caption>" . htmlspecialchars($title) . "</caption>");
+        fwrite($fileHandle, "<!DOCTYPE html><html><head>\n<meta charset=\"UTF-8\">\n<style>" . $styles . "</style>\n</head><body><div class='table-container'>\n");
     }
 
     /**
@@ -838,108 +494,79 @@ class ProcessFileController extends Controller
      */
     private function writeHtmlFooter($fileHandle): void
     {
-        fwrite($fileHandle, "</table></div></body></html>");
+        fwrite($fileHandle, "</div></body></html>");
     }
 
-    /**
-     * Оптимизированная обработка нескольких листов
-     */
-    private function handleMultipleSheetsOptimized($spreadsheet, $tempFilePath, $file)
-    {
-        $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($file->original_name, PATHINFO_FILENAME) . '_html.zip';
+    //in use
+    // public function convertExcelToHtmlViaSpout(string $id)
+    // {
+    //     $file = UserFile::findOrFail($id);
 
-        $zip = new \ZipArchive();
-        if ($zip->open($zipFilePath, \ZipArchive::CREATE) === TRUE) {
-            foreach ($spreadsheet->getAllSheets() as $sheet) {
-                $sheetName = $this->sanitizeFilename($sheet->getTitle());
-                $htmlTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.html';
+    //     $fileExtension = pathinfo($file->original_name, PATHINFO_EXTENSION);
+    //     if ($fileExtension === 'xlsx') {
+    //         $filePath = Storage::disk('local')->path($file->path);
+    //         $name = $file->original_name;
+    //     } else {
+    //         $convergedResponse = $this->xlsToXlsxAdditional($id);
+    //         $filePath = $convergedResponse['path'];
+    //         $name = $convergedResponse['name'];
+    //     }
 
-                $this->convertLargeSheetToHtml($sheet, $htmlTempPath);
-                $zip->addFile($htmlTempPath, $sheetName . '.html');
+    //     $outputFilePath = tempnam(sys_get_temp_dir(), 'html_') . '.html';
 
-                // Немедленно удаляем временный файл после добавления в ZIP
-                $this->safeUnlink($htmlTempPath);
-            }
-            $zip->close();
-        }
+    //     try {
+    //         $reader = new Reader();
+    //         $reader->open($filePath);
 
-        $spreadsheet->disconnectWorksheets();
-        unset($spreadsheet);
+    //         $htmlFile = fopen($outputFilePath, 'w');
+    //         $this->writeHtmlHeader($htmlFile, $name);
 
-        return response()->download($zipFilePath, pathinfo($file->original_name, PATHINFO_FILENAME) . '_html.zip')->deleteFileAfterSend(true);
-    }
+    //         foreach ($reader->getSheetIterator() as $sheet) {
+    //             $isFirstRow = true;
+    //             $rowCount = 0;
 
+    //             fwrite($htmlFile, "<table>");
+    //             fwrite($htmlFile, "<caption>" . htmlspecialchars($sheet->getName()) . "</caption>");
 
+    //             foreach ($sheet->getRowIterator() as $row) {
+    //                 $cells = $row->getCells();
 
-    public function convertExcelToHtmlViaSpout(string $id)
-    {
-        $file = UserFile::findOrFail($id);
+    //                 fwrite($htmlFile, "<tr>");
 
-        $fileExtension = pathinfo($file->original_name, PATHINFO_EXTENSION);
-        if ($fileExtension === 'xlsx') {
-            $filePath = Storage::disk('local')->path($file->path);
-            $name = $file->original_name;
-        } else {
-            $convergedResponse = $this->xlsToXlsxAdditional($id);
-            $filePath = $convergedResponse['path'];
-            $name = $convergedResponse['name'];
-        }
+    //                 foreach ($cells as $cell) {
+    //                     $value = $cell->getValue();
 
-        $outputFilePath = tempnam(sys_get_temp_dir(), 'html_') . '.html';
+    //                     if ($isFirstRow) {
+    //                         fwrite($htmlFile, "<th>" . htmlspecialchars($value) . "</th>");
+    //                     } else {
+    //                         fwrite($htmlFile, "<td>" . htmlspecialchars($value) . "</td>");
+    //                     }
+    //                 }
 
-        try {
-            $reader = new Reader();
-            $reader->open($filePath);
+    //                 fwrite($htmlFile, "</tr>");
+    //                 $isFirstRow = false;
+    //                 $rowCount++;
 
-            $htmlFile = fopen($outputFilePath, 'w');
-            $this->writeHtmlHeader($htmlFile, $name);
-            
-            foreach ($reader->getSheetIterator() as $sheet) {
-                $isFirstRow = true;
-                $rowCount = 0;
+    //                 // Освобождаем память каждые 100 строк
+    //                 if ($rowCount % 100 === 0) {
+    //                     gc_collect_cycles();
+    //                 }
+    //             }
 
-                fwrite($htmlFile, "<table border='1'>");
-                fwrite($htmlFile, "<caption>Лист: " . htmlspecialchars($sheet->getName()) . "</caption>");
+    //             fwrite($htmlFile, "</table><br>");
+    //         }
 
-                foreach ($sheet->getRowIterator() as $row) {
-                    $cells = $row->getCells();
+    //         $this->writeHtmlFooter($htmlFile);
+    //         fclose($htmlFile);
+    //         $reader->close();
 
-                    fwrite($htmlFile, "<tr>");
+    //         return response()->download($outputFilePath, $name . '.html')->deleteFileAfterSend(true);
 
-                    foreach ($cells as $cell) {
-                        $value = $cell->getValue();
-
-                        if ($isFirstRow) {
-                            fwrite($htmlFile, "<th>" . htmlspecialchars($value) . "</th>");
-                        } else {
-                            fwrite($htmlFile, "<td>" . htmlspecialchars($value) . "</td>");
-                        }
-                    }
-
-                    fwrite($htmlFile, "</tr>");
-                    $isFirstRow = false;
-                    $rowCount++;
-
-                    // Освобождаем память каждые 100 строк
-                    if ($rowCount % 100 === 0) {
-                        gc_collect_cycles();
-                    }
-                }
-
-                fwrite($htmlFile, "</table><br>");
-            }
-
-            $this->writeHtmlFooter($htmlFile);
-            fclose($htmlFile);
-            $reader->close();
-
-            return response()->download($outputFilePath, $name . '.html')->deleteFileAfterSend(true);
-
-        } catch (\Exception $e) {
-            Log::error('Spout conversion error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
+    //     } catch (\Exception $e) {
+    //         Log::error('Spout conversion error: ' . $e->getMessage());
+    //         throw $e;
+    //     }
+    // }
 
 
     ######################################################################
@@ -1035,19 +662,186 @@ class ProcessFileController extends Controller
                 Log::error('Output file is not readable', ['path' => $outputFilePath, 'perms' => substr(sprintf('%o', fileperms($outputFilePath)), -4)]);
                 throw new \Exception("Output file is not readable");
             }
-            //dd($outputFilePath);
 
-            $response = ['path' => $outputFilePath, 'name' => pathinfo($file->original_name, PATHINFO_FILENAME)];
-
-            return $response;
-
-            //return response()->download($outputFilePath, pathinfo($file->original_name, PATHINFO_FILENAME) . '.xlsx')->deleteFileAfterSend(true);
-
+            return ['path' => $outputFilePath, 'name' => pathinfo($file->original_name, PATHINFO_FILENAME)];
         } catch (\Exception $e) {
             Log::error('Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
             $this->safeUnlink($tempFilePath);
         }
+    }
+
+    ###########################
+    //rewrite function spout to xlsx
+    public function convertExcelToHtmlViaSpout(string $id)
+    {
+        $file = UserFile::findOrFail($id);
+
+        $fileExtension = pathinfo($file->original_name, PATHINFO_EXTENSION);
+        if ($fileExtension === 'xlsx') {
+            $filePath = Storage::disk('local')->path($file->path);
+            $name = $file->original_name;
+        } else {
+            $convergedResponse = $this->xlsToXlsxAdditional($id);
+            $filePath = $convergedResponse['path'];
+            $name = $convergedResponse['name'];
+        }
+
+        // Создаем временную директорию для HTML-файлов
+        $tempHtmlDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('html_files_');
+        if (!mkdir($tempHtmlDir, 0755, true) && !is_dir($tempHtmlDir)) {
+            throw new \RuntimeException(sprintf('Directory "%s" was not created', $tempHtmlDir));
+        }
+
+        $reader = new Reader();
+        $reader->open($filePath);
+
+        // Получаем количество листов
+        $sheetCount = 0;
+        foreach ($reader->getSheetIterator() as $sheet) {
+            $sheetCount++;
+        }
+
+        // Если лист один, возвращаем одиночный HTML-файл (старая логика)
+        if ($sheetCount === 1) {
+            $reader->close();
+            return $this->processSingleSheet($filePath, $name);
+        }
+
+        // Если листов несколько, создаем ZIP-архив
+        return $this->processMultipleSheetsToZip($filePath, $name, $tempHtmlDir);
+    }
+
+    private function processSingleSheet(string $filePath, string $name)
+    {
+        $outputFilePath = tempnam(sys_get_temp_dir(), 'html_') . '.html';
+
+        try {
+            $reader = new Reader();
+            $reader->open($filePath);
+
+            $htmlFile = fopen($outputFilePath, 'w');
+            $this->writeHtmlHeader($htmlFile, $name);
+
+            foreach ($reader->getSheetIterator() as $sheet) {
+                $this->generateSheetHtml($sheet, $htmlFile);
+            }
+
+            $this->writeHtmlFooter($htmlFile);
+            fclose($htmlFile);
+            $reader->close();
+
+            return response()->download($outputFilePath, pathinfo($name, PATHINFO_FILENAME) . '.html')
+                ->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            if (isset($htmlFile))
+                fclose($htmlFile);
+            if (file_exists($outputFilePath))
+                @unlink($outputFilePath);
+            throw $e;
+        }
+    }
+
+    private function processMultipleSheetsToZip(string $filePath, string $name, string $tempHtmlDir)
+    {
+        $zipFilePath = tempnam(sys_get_temp_dir(), 'html_zip_') . '.zip';
+        $zip = new \ZipArchive();
+
+        try {
+            // Создаем ZIP-архив :cite[3]:cite[6]
+            if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== TRUE) {
+                throw new \Exception("Cannot create ZIP archive");
+            }
+
+            $reader = new Reader();
+            $reader->open($filePath);
+
+            // Обрабатываем каждый лист
+            foreach ($reader->getSheetIterator() as $sheet) {
+                $sheetName = $this->sanitizeFilename($sheet->getName());
+                $htmlFilePath = $tempHtmlDir . DIRECTORY_SEPARATOR . $sheetName . '.html';
+
+                // Генерируем HTML для текущего листа
+                $htmlFile = fopen($htmlFilePath, 'w');
+                $this->writeHtmlHeader($htmlFile, $sheetName);
+                $this->generateSheetHtml($sheet, $htmlFile);
+                $this->writeHtmlFooter($htmlFile);
+                fclose($htmlFile);
+
+                // Добавляем HTML-файл в ZIP-архив :cite[9]
+                $zip->addFile($htmlFilePath, $sheetName . '.html');
+            }
+
+            $reader->close();
+            $zip->close();
+
+            // Удаляем временную директорию с HTML-файлами
+            $this->deleteDirectory($tempHtmlDir);
+
+            return response()->download($zipFilePath, pathinfo($name, PATHINFO_FILENAME) . '_html.zip')
+                ->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            // Удаляем временную директорию в случае ошибки
+            $this->deleteDirectory($tempHtmlDir);
+            if (file_exists($zipFilePath))
+                @unlink($zipFilePath);
+            throw $e;
+        }
+    }
+
+    private function generateSheetHtml($sheet, $htmlFile): void
+    {
+        $isFirstRow = true;
+        $rowCount = 0;
+
+        fwrite($htmlFile, "<table>");
+        fwrite($htmlFile, "<caption>" . htmlspecialchars($sheet->getName()) . "</caption>");
+
+        foreach ($sheet->getRowIterator() as $row) {
+            $cells = $row->getCells();
+
+            fwrite($htmlFile, "<tr>");
+
+            foreach ($cells as $cell) {
+                $value = $cell->getValue();
+
+
+                if ($isFirstRow) {
+                    fwrite($htmlFile, "<th>" . htmlspecialchars($value) . "</th>");
+                } else {
+                    fwrite($htmlFile, "<td>" . htmlspecialchars($value) . "</td>");
+                }
+            }
+
+            fwrite($htmlFile, "</tr>");
+            $isFirstRow = false;
+            $rowCount++;
+
+            // Освобождаем память каждые 100 строк
+            if ($rowCount % 100 === 0) {
+                gc_collect_cycles();
+            }
+        }
+
+        fwrite($htmlFile, "</table><br>");
+    }
+
+    /**
+     * Удаление директории с содержимым
+     */
+    private function deleteDirectory(string $dir): void
+    {
+        if (!is_dir($dir))
+            return;
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            is_dir($path) ? $this->deleteDirectory($path) : @unlink($path);
+        }
+        @rmdir($dir);
     }
 }
