@@ -9,17 +9,19 @@ use App\Http\Controllers\AnalyzerController;
 use App\Http\Controllers\DownloadController;
 use Illuminate\Support\Facades\Route;
 
-// Главная страница - ОСТАВЛЯЕМ ТОЛЬКО ОДИН МАРШРУТ
-Route::get('/', function () {
-    return view('index');
-})->name('home');
+Route::view('/', 'index')->name('home');
 
-Route::post('/download', [DownloadController::class, 'download'])->name('download');
+Route::view('/info', 'app')->name('info');
+
+Route::post('/download/{id}', [DownloadController::class, 'download'])->name('download');
 
 Route::get('/dashboard', [FileController::class, 'index'])->name('dashboard');
+
 Route::resource('files', FileController::class);
+
 Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
-Route::post('/file/{id}/xlsxToXls', [ProcessFileController::class, 'xlsxToXls'])->name('xlsxToXls');
+
+Route::post('/file/{id}/xlsxToXls', [ProcessFileController::class, 'xlsxToXls_v1'])->name('xlsxToXls');
 
 Route::post('/file/{id}/xlsToXlsx', [ProcessFileController::class, 'xlsToXlsx'])->name('xlsToXlsx');
 
