@@ -15,7 +15,6 @@ class FileController extends Controller
     public function index()
     {
         $files = UserFile::orderBy('id', 'desc')->get();
-
         return view('dashboard', ['files' => $files]);
     }
 
@@ -32,7 +31,6 @@ class FileController extends Controller
      */
     public function store(Request $request)
     {
-
         $request->validate([
             'xls_file' => ['nullable', 'file', 'max:50000', 'mimes:xls,xlsx']
         ]);
@@ -44,18 +42,10 @@ class FileController extends Controller
 
             // Путь к файлу
             $path = Storage::disk('local')->put('excel_files', $request->xls_file);
-            //dd($path);
-            //dd($originalName);
-
-
         }
-        //Storage::disk('local')->put('excel_files', $request->xls_file);
         $file = UserFile::create(['original_name' => $originalName, 'path' => $path]);
-
         return back()->with('success', 'Your file was loaded');
-
     }
-
 
     private function sanitizeFileName($fileName)
     {
@@ -77,19 +67,12 @@ class FileController extends Controller
         return $fileName;
     }
 
-
-
     /**
      * Display the specified resource.
      */
     public function show(string $id)
     {
-
         $file = UserFile::find($id);
-        //$absolutePath = Storage::disk('local')->path($file->path);
-        //dd($absolutePath, file_exists($absolutePath), Storage::disk('local')->exists($file->path));
-
-
         $file = UserFile::find("$id");
 
         if (!$file) {
@@ -123,10 +106,7 @@ class FileController extends Controller
                 unlink($tempFilePath);
             }
         }
-        //dd($data);
 
-
-        // //return $data;
         return view('view', ['data' => $data, 'name' => $file->original_name]);
     }
 
