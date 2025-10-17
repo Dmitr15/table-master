@@ -9,18 +9,20 @@ use App\Http\Controllers\AnalyzerController;
 use App\Http\Controllers\DownloadController;
 use Illuminate\Support\Facades\Route;
 
+
+//main view
 Route::view('/', 'index')->name('home');
 
-Route::view('/info', 'app')->name('info');
-
+//download route
 Route::post('/download/{id}', [DownloadController::class, 'download'])->name('download');
 
+//view dashboard route
 Route::get('/dashboard', [FileController::class, 'index'])->name('dashboard');
 
+//route for store, show, delete file
 Route::resource('files', FileController::class);
 
-Route::post('/process', [ProcessFileController::class, 'viewFile'])->name('process.form');
-
+//routes for conversion files
 Route::post('/file/{id}/xlsxToXls', [ProcessFileController::class, 'xlsxToXls_v1'])->name('xlsxToXls');
 
 Route::post('/file/{id}/xlsToXlsx', [ProcessFileController::class, 'xlsToXlsx'])->name('xlsToXlsx');
@@ -31,15 +33,8 @@ Route::post('/file/{id}/excelToCsv', [ProcessFileController::class, 'excelToCsv'
 
 Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'convertExcelToHtmlViaSpout'])->name('excelToHtml');
 
-// Маршруты для функциональности Table Master
-// Route::get('/converter', [ConverterController::class, 'index'])->name('converter');
-// Route::post('/converter/process', [ConverterController::class, 'process'])->name('converter.process');
+//route to check conversion status in 5 sec
+Route::get('/convert/check/{id}', [DownloadController::class, 'checkStatus'])->name('convert.check');
 
-// Route::get('/merger', [MergerController::class, 'index'])->name('merger');
-// Route::post('/merger/process', [MergerController::class, 'process'])->name('merger.process');
-
-// Route::get('/splitter', [SplitterController::class, 'index'])->name('splitter');
-// Route::post('/splitter/process', [SplitterController::class, 'process'])->name('splitter.process');
-
-Route::get('/analyzer', [AnalyzerController::class, 'index'])->name('analyzer');
-Route::post('/analyzer/process', [AnalyzerController::class, 'process'])->name('analyzer.process');
+//route to download file in browser
+Route::get('/download/converted_file/{id}', [DownloadController::class, 'downloadFile'])->name('download.file');
