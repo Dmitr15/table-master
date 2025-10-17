@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\UserFile;
 use Illuminate\Support\Facades\Log;
 use OpenSpout\Reader\XLSX\Reader;
+use App\Jobs\ConvertionJob;
+
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -29,114 +31,75 @@ class ProcessFileController extends Controller
 
         return $data;
     }
-    
+
     public function xlsxToXls_v1(string $id)
     {
         $tempDir = sys_get_temp_dir();
         if (!is_writable($tempDir)) {
             Log::error('Temp directory is not writable', ['path' => $tempDir]);
-            throw new \Exception("Temporary directory is not writable");
+            return response()->json([
+                'success' => false,
+                'message' => 'Temporary directory is not writable'
+            ], 500);
         }
 
-        $file = UserFile::findOrFail($id);
-        Log::info('Starting XLSX to XLS conversion with array-based styling', ['file_id' => $id]);
-
-        // Получаем содержимое файла
-        $fileContent = Storage::disk('local')->get($file->path);
-
-        // Создаем временный файл
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
-
         try {
-            // Настройка читателя
-            $reader = IOFactory::createReader('Xlsx');
+            $file = UserFile::findOrFail($id);
+            Log::info('Starting XLSX to XLS conversion with array-based styling', ['file_id' => $id]);
 
-            // Загружаем исходный XLSX файл
-            $sourceSpreadsheet = $reader->load($tempFilePath);
+            ConvertionJob::dispatch($file, $file->original_name, $file->path, "xlsxToXls");
 
-            // Создаем новый XLS документ
-            $newSpreadsheet = new Spreadsheet();
-            $newSpreadsheet->removeSheetByIndex(0);
-
-            // Обрабатываем каждый лист
-            foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
-                $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
-                $newSpreadsheet->addSheet($newSheet);
-
-                // Копируем основные свойства листа
-                $this->copySheetProperties($sourceSheet, $newSheet);
-
-                // Копируем объединенные ячейки
-                $this->copyMergedCells($sourceSheet, $newSheet);
-
-                // Копируем размеры столбцов и строк
-                $this->copyDimensions($sourceSheet, $newSheet);
-
-                // Копируем данные и стили с использованием массового подхода
-                $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
-
-                // Освобождаем память после обработки каждого листа
-                gc_collect_cycles();
-            }
-
-            // Формируем путь для выходного файла
-            $outputFilePath = substr($tempFilePath, 0, -4) . '.xls';
-
-            $writer = IOFactory::createWriter($newSpreadsheet, 'Xls');
-            $writer->save($outputFilePath);
-            Log::info('XLS file saved', ['path' => $outputFilePath, 'exists' => file_exists($outputFilePath)]);
-
-            // Освобождаем память
-            $sourceSpreadsheet->disconnectWorksheets();
-            $newSpreadsheet->disconnectWorksheets();
-            unset($sourceSpreadsheet, $newSpreadsheet);
-
-            if (!file_exists($outputFilePath)) {
-                Log::error('Output file does not exist', ['path' => $outputFilePath]);
-                throw new \Exception("Output file was not created");
-            }
-
-            // Возвращаем файл для скачивания
-            $outputFileName = pathinfo($file->original_name, PATHINFO_FILENAME) . '.xls';
-            return response()->download($outputFilePath, $outputFileName)->deleteFileAfterSend(true);
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversion started successfully',
+                'file_id' => $file->id
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Conversion error: ' . $e->getMessage());
-            throw $e;
-        } finally {
-            // Удаляем временные файлы
-            $this->safeUnlink($tempFilePath);
+            if (isset($file)) {
+                $file->update(['status' => 'failed']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
-    /**
-     * Копирует ячейки и стили с использованием массового экспорта/импорта через массивы
-     */
     private function copyCellsWithArrayStyles($sourceSheet, $newSheet): void
     {
         $highestRow = $sourceSheet->getHighestDataRow();
         $highestColumn = $sourceSheet->getHighestDataColumn();
 
-        // Используем пакетную обработку для экономии памяти
-        $batchSize = 50; // Меньший размер для лучшего управления памятью при работе со стилями
+        // Увеличиваем размер батча для уменьшения накладных расходов
+        $batchSize = 200; // Увеличили с 50 до 200
         $processedRows = 0;
 
-        Log::info('Starting array-based style copying', ['rows' => $highestRow, 'columns' => $highestColumn]);
+        // Предварительно вычисляем границы столбцов в числовом формате
+        $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+        Log::info('Starting optimized array-based style copying', ['rows' => $highestRow, 'columns' => $highestColumn]);
 
         for ($row = 1; $row <= $highestRow; $row += $batchSize) {
             $endRow = min($row + $batchSize - 1, $highestRow);
 
             // Обрабатываем диапазон строк
             for ($currentRow = $row; $currentRow <= $endRow; $currentRow++) {
-                // Собираем данные строки
                 $rowData = [];
                 $rowStyles = [];
 
-                for ($col = 'A'; $col <= $highestColumn; $col++) {
+                // Используем числовой индекс для столбцов - значительно быстрее
+                for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
+                    $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
                     $cellCoordinate = $col . $currentRow;
 
-                    if (!$sourceSheet->cellExists($cellCoordinate)) {
+                    // Быстрая проверка существования ячейки через вычисляемые свойства
+                    $cellExists = $sourceSheet->getCell($cellCoordinate)->getValue() !== null
+                        || $sourceSheet->getCell($cellCoordinate)->getStyle()->getFill()->getFillType() !== null;
+
+                    if (!$cellExists) {
                         $rowData[$col] = null;
                         continue;
                     }
@@ -146,34 +109,77 @@ class ProcessFileController extends Controller
 
                     $rowData[$col] = $cellValue;
 
-                    // Экспортируем стиль ячейки в массив
-                    try {
-                        $rowStyles[$col] = $sourceCell->getStyle()->exportArray();
-                    } catch (\Exception $e) {
-                        Log::warning("Error exporting style for cell {$cellCoordinate}: " . $e->getMessage());
-                        $rowStyles[$col] = [];
+                    // Экспортируем стиль только если ячейка не пустая или имеет стиль
+                    if ($cellValue !== null || $this->hasVisibleStyle($sourceCell)) {
+                        try {
+                            $rowStyles[$col] = $sourceCell->getStyle()->exportArray();
+                        } catch (\Exception $e) {
+                            $rowStyles[$col] = [];
+                        }
                     }
                 }
 
-                // Записываем данные строки массово
-                $newSheet->fromArray([$rowData], null, 'A' . $currentRow);
+                // Массовая запись данных строки
+                if (
+                    !empty(array_filter($rowData, function ($v) {
+                        return $v !== null;
+                    }))
+                ) {
+                    $newSheet->fromArray([$rowData], null, 'A' . $currentRow);
+                }
 
-                // Применяем стили массово для всей строки
-                $this->applyRowStyles($newSheet, $currentRow, $rowStyles, $highestColumn);
+                // Применяем стили только если они есть
+                if (!empty($rowStyles)) {
+                    $this->applyRowStylesOptimized($newSheet, $currentRow, $rowStyles);
+                }
 
                 $processedRows++;
 
-                // Освобождаем память каждые 25 строк
-                if ($processedRows % 25 === 0) {
+                // Освобождаем память реже - каждые 50 строк
+                if ($processedRows % 50 === 0) {
                     gc_collect_cycles();
-                    Log::debug("Processed {$processedRows} rows with array styles");
                 }
             }
 
             Log::debug("Completed processing rows {$row} to {$endRow}");
         }
 
-        Log::info('Completed array-based style copying', ['total_rows' => $processedRows]);
+        Log::info('Completed optimized array-based style copying', ['total_rows' => $processedRows]);
+    }
+
+
+    /**
+     * Оптимизированное применение стилей к строке
+     */
+    private function applyRowStylesOptimized($sheet, $rowNumber, $styles): void
+    {
+        foreach ($styles as $col => $styleArray) {
+            if (empty($styleArray))
+                continue;
+
+            try {
+                $sheet->getStyle($col . $rowNumber)->applyFromArray($styleArray);
+            } catch (\Exception $e) {
+                Log::error('Apply row styles from array error: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Быстрая проверка наличия видимого стиля
+     */
+    private function hasVisibleStyle($cell): bool
+    {
+        $style = $cell->getStyle();
+        return $style->getFill()->getFillType() !== null
+            || $style->getFont()->getBold()
+            || $style->getFont()->getItalic()
+            || $style->getFont()->getSize() !== 11
+            || $style->getFont()->getName() !== 'Calibri'
+            || $style->getBorders()->getLeft()->getBorderStyle() !== 'none'
+            || $style->getBorders()->getRight()->getBorderStyle() !== 'none'
+            || $style->getBorders()->getTop()->getBorderStyle() !== 'none'
+            || $style->getBorders()->getBottom()->getBorderStyle() !== 'none';
     }
 
     /**
@@ -334,7 +340,7 @@ class ProcessFileController extends Controller
             return null;
         }
     }
-    
+
     /////old
 
 
