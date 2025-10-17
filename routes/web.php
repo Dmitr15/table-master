@@ -25,13 +25,13 @@ Route::resource('files', FileController::class);
 //routes for conversion files
 Route::post('/file/{id}/xlsxToXls', [ProcessFileController::class, 'xlsxToXls_v1'])->name('xlsxToXls');
 
-Route::post('/file/{id}/xlsToXlsx', [ProcessFileController::class, 'xlsToXlsx'])->name('xlsToXlsx');
+Route::post('/file/{id}/xlsToXlsx', [ProcessFileController::class, 'xlsToXlsx_v1'])->name('xlsToXlsx');
 
-Route::post('/file/{id}/excelToOds', [ProcessFileController::class, 'excelToOds'])->name('excelToOds');
+Route::post('/file/{id}/excelToOds', [ProcessFileController::class, 'excelToOds_v1'])->name('excelToOds');
 
-Route::post('/file/{id}/excelToCsv', [ProcessFileController::class, 'excelToCsv'])->name('excelToCsv');
+Route::post('/file/{id}/excelToCsv', [ProcessFileController::class, 'excelToCsv_v1'])->name('excelToCsv');
 
-Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'convertExcelToHtmlViaSpout'])->name('excelToHtml');
+Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'ExcelToHtml_v1'])->name('excelToHtml');
 
 //route to check conversion status in 5 sec
 Route::get('/convert/check/{id}', [DownloadController::class, 'checkStatus'])->name('convert.check');
