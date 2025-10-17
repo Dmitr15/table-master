@@ -68,371 +68,40 @@ class ProcessFileController extends Controller
         }
     }
 
-    private function copyCellsWithArrayStyles($sourceSheet, $newSheet): void
-    {
-        $highestRow = $sourceSheet->getHighestDataRow();
-        $highestColumn = $sourceSheet->getHighestDataColumn();
-
-        // Увеличиваем размер батча для уменьшения накладных расходов
-        $batchSize = 200; // Увеличили с 50 до 200
-        $processedRows = 0;
-
-        // Предварительно вычисляем границы столбцов в числовом формате
-        $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
-
-        Log::info('Starting optimized array-based style copying', ['rows' => $highestRow, 'columns' => $highestColumn]);
-
-        for ($row = 1; $row <= $highestRow; $row += $batchSize) {
-            $endRow = min($row + $batchSize - 1, $highestRow);
-
-            // Обрабатываем диапазон строк
-            for ($currentRow = $row; $currentRow <= $endRow; $currentRow++) {
-                $rowData = [];
-                $rowStyles = [];
-
-                // Используем числовой индекс для столбцов - значительно быстрее
-                for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
-                    $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-                    $cellCoordinate = $col . $currentRow;
-
-                    // Быстрая проверка существования ячейки через вычисляемые свойства
-                    $cellExists = $sourceSheet->getCell($cellCoordinate)->getValue() !== null
-                        || $sourceSheet->getCell($cellCoordinate)->getStyle()->getFill()->getFillType() !== null;
-
-                    if (!$cellExists) {
-                        $rowData[$col] = null;
-                        continue;
-                    }
-
-                    $sourceCell = $sourceSheet->getCell($cellCoordinate);
-                    $cellValue = $this->getSafeCellValue($sourceCell);
-
-                    $rowData[$col] = $cellValue;
-
-                    // Экспортируем стиль только если ячейка не пустая или имеет стиль
-                    if ($cellValue !== null || $this->hasVisibleStyle($sourceCell)) {
-                        try {
-                            $rowStyles[$col] = $sourceCell->getStyle()->exportArray();
-                        } catch (\Exception $e) {
-                            $rowStyles[$col] = [];
-                        }
-                    }
-                }
-
-                // Массовая запись данных строки
-                if (
-                    !empty(array_filter($rowData, function ($v) {
-                        return $v !== null;
-                    }))
-                ) {
-                    $newSheet->fromArray([$rowData], null, 'A' . $currentRow);
-                }
-
-                // Применяем стили только если они есть
-                if (!empty($rowStyles)) {
-                    $this->applyRowStylesOptimized($newSheet, $currentRow, $rowStyles);
-                }
-
-                $processedRows++;
-
-                // Освобождаем память реже - каждые 50 строк
-                if ($processedRows % 50 === 0) {
-                    gc_collect_cycles();
-                }
-            }
-
-            Log::debug("Completed processing rows {$row} to {$endRow}");
-        }
-
-        Log::info('Completed optimized array-based style copying', ['total_rows' => $processedRows]);
-    }
-
-
-    /**
-     * Оптимизированное применение стилей к строке
-     */
-    private function applyRowStylesOptimized($sheet, $rowNumber, $styles): void
-    {
-        foreach ($styles as $col => $styleArray) {
-            if (empty($styleArray))
-                continue;
-
-            try {
-                $sheet->getStyle($col . $rowNumber)->applyFromArray($styleArray);
-            } catch (\Exception $e) {
-                Log::error('Apply row styles from array error: ' . $e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Быстрая проверка наличия видимого стиля
-     */
-    private function hasVisibleStyle($cell): bool
-    {
-        $style = $cell->getStyle();
-        return $style->getFill()->getFillType() !== null
-            || $style->getFont()->getBold()
-            || $style->getFont()->getItalic()
-            || $style->getFont()->getSize() !== 11
-            || $style->getFont()->getName() !== 'Calibri'
-            || $style->getBorders()->getLeft()->getBorderStyle() !== 'none'
-            || $style->getBorders()->getRight()->getBorderStyle() !== 'none'
-            || $style->getBorders()->getTop()->getBorderStyle() !== 'none'
-            || $style->getBorders()->getBottom()->getBorderStyle() !== 'none';
-    }
-
-    /**
-     * Массово применяет стили к строке
-     */
-    private function applyRowStyles($sheet, $rowNumber, $styles, $highestColumn): void
-    {
-        foreach ($styles as $col => $styleArray) {
-            if (empty($styleArray)) {
-                continue;
-            }
-
-            $cellCoordinate = $col . $rowNumber;
-
-            try {
-                // Применяем стиль из массива
-                $sheet->getStyle($cellCoordinate)->applyFromArray($styleArray);
-            } catch (\Exception $e) {
-                Log::warning("Error applying style to cell {$cellCoordinate}: " . $e->getMessage());
-
-                // Пытаемся применить стиль по частям
-                $this->applyStyleSafely($sheet, $cellCoordinate, $styleArray);
-            }
-        }
-    }
-
-    /**
-     * Безопасное применение стиля по частям
-     */
-    private function applyStyleSafely($sheet, $cellCoordinate, $styleArray): void
-    {
-        // Применяем отдельные компоненты стиля
-        if (isset($styleArray['font'])) {
-            try {
-                $sheet->getStyle($cellCoordinate)->getFont()->applyFromArray($styleArray['font']);
-            } catch (\Exception $e) {
-                Log::debug("Error applying font style to {$cellCoordinate}: " . $e->getMessage());
-            }
-        }
-
-        if (isset($styleArray['fill'])) {
-            try {
-                $sheet->getStyle($cellCoordinate)->getFill()->applyFromArray($styleArray['fill']);
-            } catch (\Exception $e) {
-                Log::debug("Error applying fill style to {$cellCoordinate}: " . $e->getMessage());
-            }
-        }
-
-        if (isset($styleArray['borders'])) {
-            try {
-                $sheet->getStyle($cellCoordinate)->getBorders()->applyFromArray($styleArray['borders']);
-            } catch (\Exception $e) {
-                Log::debug("Error applying borders to {$cellCoordinate}: " . $e->getMessage());
-            }
-        }
-
-        if (isset($styleArray['alignment'])) {
-            try {
-                $sheet->getStyle($cellCoordinate)->getAlignment()->applyFromArray($styleArray['alignment']);
-            } catch (\Exception $e) {
-                Log::debug("Error applying alignment to {$cellCoordinate}: " . $e->getMessage());
-            }
-        }
-
-        if (isset($styleArray['numberFormat'])) {
-            try {
-                $formatCode = $styleArray['numberFormat'];
-                if (is_array($formatCode) && isset($formatCode['formatCode'])) {
-                    $formatCode = $formatCode['formatCode'];
-                }
-                if ($formatCode && $formatCode !== 'General') {
-                    $sheet->getStyle($cellCoordinate)->getNumberFormat()->setFormatCode($formatCode);
-                }
-            } catch (\Exception $e) {
-                Log::debug("Error applying number format to {$cellCoordinate}: " . $e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Копирует свойства листа
-     */
-    private function copySheetProperties($sourceSheet, $newSheet): void
-    {
-        try {
-            $newSheet->getPageSetup()->setOrientation($sourceSheet->getPageSetup()->getOrientation());
-            $newSheet->getPageSetup()->setPaperSize($sourceSheet->getPageSetup()->getPaperSize());
-
-            $newSheet->getPageMargins()->setTop($sourceSheet->getPageMargins()->getTop());
-            $newSheet->getPageMargins()->setRight($sourceSheet->getPageMargins()->getRight());
-            $newSheet->getPageMargins()->setLeft($sourceSheet->getPageMargins()->getLeft());
-            $newSheet->getPageMargins()->setBottom($sourceSheet->getPageMargins()->getBottom());
-
-            $newSheet->getSheetView()->setZoomScale($sourceSheet->getSheetView()->getZoomScale());
-        } catch (\Exception $e) {
-            Log::warning("Error copying sheet properties: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Копирует объединенные ячейки
-     */
-    private function copyMergedCells($sourceSheet, $newSheet): void
-    {
-        try {
-            foreach ($sourceSheet->getMergeCells() as $mergedCells) {
-                $newSheet->mergeCells($mergedCells);
-            }
-        } catch (\Exception $e) {
-            Log::warning("Error copying merged cells: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Копирует размеры столбцов и строк
-     */
-    private function copyDimensions($sourceSheet, $newSheet): void
-    {
-        try {
-            // Копируем ширину столбцов
-            foreach ($sourceSheet->getColumnDimensions() as $columnDimension) {
-                $col = $columnDimension->getColumnIndex();
-                $newSheet->getColumnDimension($col)->setWidth($columnDimension->getWidth());
-                $newSheet->getColumnDimension($col)->setAutoSize($columnDimension->getAutoSize());
-            }
-
-            // Копируем высоту строк
-            foreach ($sourceSheet->getRowDimensions() as $rowDimension) {
-                $row = $rowDimension->getRowIndex();
-                $newSheet->getRowDimension($row)->setRowHeight($rowDimension->getRowHeight());
-                $newSheet->getRowDimension($row)->setVisible($rowDimension->getVisible());
-            }
-        } catch (\Exception $e) {
-            Log::warning("Error copying dimensions: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Безопасное получение значения ячейки
-     */
-    private function getSafeCellValue($cell)
-    {
-        try {
-            $value = $cell->getValue();
-
-            if (is_array($value)) {
-                return isset($value[0]) ? $value[0] : null;
-            }
-
-            if (is_object($value) && method_exists($value, '__toString')) {
-                return $value->__toString();
-            }
-
-            return $value;
-
-        } catch (\Exception $e) {
-            Log::warning("Error getting cell value: " . $e->getMessage());
-            return null;
-        }
-    }
-
-    /////old
-
-
-    public function xlsxToXls(string $id)
+    public function xlsToXlsx_v1(string $id)
     {
         $tempDir = sys_get_temp_dir();
         if (!is_writable($tempDir)) {
             Log::error('Temp directory is not writable', ['path' => $tempDir]);
-            throw new \Exception("Temporary directory is not writable");
+            return response()->json([
+                'success' => false,
+                'message' => 'Temporary directory is not writable'
+            ], 500);
         }
-
-        $file = UserFile::findOrFail($id);
-        Log::info('file', ['file' => $file]);
-
-        // Получаем содержимое файла
-        $fileContent = Storage::disk('local')->get($file->path);
-
-        // Создаем временный файл
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
-        Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
 
         try {
-            // Настройка читателя
-            $reader = IOFactory::createReader('Xlsx');
-            $reader->setReadDataOnly(true);
+            $file = UserFile::findOrFail($id);
+            Log::info('Starting XLS to XLSX conversion with array-based styling', ['file_id' => $id]);
 
-            // Загружаем исходный XLSX файл по ПУТИ
-            $sourceSpreadsheet = $reader->load($tempFilePath);
+            ConvertionJob::dispatch($file, $file->original_name, $file->path, "xlsToXlsx");
 
-            // Создаем новый XLS документ
-            $newSpreadsheet = new Spreadsheet();
-            $newSpreadsheet->removeSheetByIndex(0);
-
-            // Обрабатываем каждый лист
-            foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
-                $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
-                $newSpreadsheet->addSheet($newSheet);
-
-                $highestRow = $sourceSheet->getHighestDataRow();
-                $highestColumn = $sourceSheet->getHighestDataColumn();
-
-                if ($highestRow == 1 && $sourceSheet->getCell('A1')->getValue() === null) {
-                    continue;
-                }
-
-                $data = $sourceSheet->rangeToArray(
-                    'A1:' . $highestColumn . $highestRow,
-                    null,
-                    true,
-                    false
-                );
-
-                $newSheet->fromArray($data);
-            }
-
-            // Формируем путь для выходного файла ПРАВИЛЬНО
-            $outputFilePath = substr($tempFilePath, 0, -4) . '.xls';
-
-            $writer = IOFactory::createWriter($newSpreadsheet, 'Xls');
-            $writer->save($outputFilePath);
-            Log::info('XLS file saved', ['path' => $outputFilePath, 'exists' => file_exists($outputFilePath)]);
-
-            // Освобождаем память
-            $sourceSpreadsheet->disconnectWorksheets();
-            $newSpreadsheet->disconnectWorksheets();
-            unset($sourceSpreadsheet, $newSpreadsheet);
-
-            if (!file_exists($outputFilePath)) {
-                Log::error('Output file does not exist', ['path' => $outputFilePath]);
-                throw new \Exception("Output file was not created");
-            }
-
-            if (!is_readable($outputFilePath)) {
-                Log::error('Output file is not readable', ['path' => $outputFilePath, 'perms' => substr(sprintf('%o', fileperms($outputFilePath)), -4)]);
-                throw new \Exception("Output file is not readable");
-            }
-
-            // Возвращаем файл для скачивания
-            return response()->download($outputFilePath, substr($file->original_name, 0, -4) . 'xls')->deleteFileAfterSend(true);
-
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversion started successfully',
+                'file_id' => $file->id
+            ]);
         } catch (\Exception $e) {
             Log::error('Conversion error: ' . $e->getMessage());
-            throw $e;
-        } finally {
-            // Удаляем временные файлы
-            $this->safeUnlink($tempFilePath);
+            if (isset($file)) {
+                $file->update(['status' => 'failed']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
-
-    //old
-
 
     public function xlsToXlsx(string $id)
     {
@@ -522,6 +191,41 @@ class ProcessFileController extends Controller
     }
 
 
+    public function excelToOds_v1(string $id)
+    {
+        $tempDir = sys_get_temp_dir();
+        if (!is_writable($tempDir)) {
+            Log::error('Temp directory is not writable', ['path' => $tempDir]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Temporary directory is not writable'
+            ], 500);
+        }
+
+        try {
+            $file = UserFile::findOrFail($id);
+            Log::info('Starting Excel to Ods conversion with array-based styling', ['file_id' => $id]);
+
+            ConvertionJob::dispatch($file, $file->original_name, $file->path, "excelToOds");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversion started successfully',
+                'file_id' => $file->id
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Conversion error: ' . $e->getMessage());
+            if (isset($file)) {
+                $file->update(['status' => 'failed']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function excelToOds(string $id)
     {
         $tempDir = sys_get_temp_dir();
@@ -610,6 +314,38 @@ class ProcessFileController extends Controller
         }
     }
 
+
+    public function excelToCsv_v1(string $id, string $delimiter = ',')
+    {
+        $tempDir = sys_get_temp_dir();
+        if (!is_writable($tempDir)) {
+            Log::error('Temp directory is not writable', ['path' => $tempDir]);
+            throw new \Exception("Temporary directory is not writable");
+        }
+
+        try {
+            $file = UserFile::findOrFail($id);
+            Log::info('file', ['file' => $file]);
+
+            ConvertionJob::dispatch($file, $file->original_name, $file->path, "excelToCsv");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversion started successfully',
+                'file_id' => $file->id
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Conversion error: ' . $e->getMessage());
+            if (isset($file)) {
+                $file->update(['status' => 'failed']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function excelToCsv(string $id, string $delimiter = ',')
     {
         $tempDir = sys_get_temp_dir();
@@ -655,6 +391,7 @@ class ProcessFileController extends Controller
                 unset($sourceSpreadsheet);
 
                 return response()->download($outputFilePath, $sheetName . '.csv')->deleteFileAfterSend(true);
+            
             } else {
 
                 $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($file->original_name, PATHINFO_FILENAME) . '_csv.zip';
@@ -910,6 +647,42 @@ class ProcessFileController extends Controller
             throw $e;
         } finally {
             $this->safeUnlink($tempFilePath);
+        }
+    }
+
+
+    public function ExcelToHtml_v1(string $id)
+    {
+        $tempDir = sys_get_temp_dir();
+        if (!is_writable($tempDir)) {
+            Log::error('Temp directory is not writable', ['path' => $tempDir]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Temporary directory is not writable'
+            ], 500);
+        }
+
+        try {
+            $file = UserFile::findOrFail($id);
+            Log::info('Starting Excel to HTML conversion', ['file_id' => $id]);
+
+            ConvertionJob::dispatch($file, $file->original_name, $file->path, "ExcelToHtml");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversion started successfully',
+                'file_id' => $file->id
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Conversion error: ' . $e->getMessage());
+            if (isset($file)) {
+                $file->update(['status' => 'failed']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
