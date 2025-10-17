@@ -21,6 +21,7 @@ class ConvertionJob implements ShouldQueue
 
     protected $original_name;
     protected $path;
+    protected $delimiter;
     protected $name;
     protected $typeOfConversation;
     protected $fileMetaData;
@@ -35,6 +36,7 @@ class ConvertionJob implements ShouldQueue
         $this->original_name = $original_name;
         $this->path = $path;
         $this->typeOfConversation = $type;
+        $this->delimiter = ',';
     }
 
     /**
@@ -49,19 +51,19 @@ class ConvertionJob implements ShouldQueue
                 break;
             case 'xlsToXlsx':
                 Log::info('Function xlsToXlsx was started successfully');
-                //$this->xlsToXlsx();
+                $this->xlsToXlsx();
                 break;
             case 'excelToOds':
                 Log::info('Function excelToOds was started successfully');
-                //$this->excelToOds();
+                $this->excelToOds();
                 break;
             case 'excelToCsv':
                 Log::info('Function excelToCsv was started successfully');
-                //$this->excelToCsv();
+                $this->excelToCsv();
                 break;
-            case 'convertExcelToHtmlViaSpout':
-                Log::info('Function convertExcelToHtmlViaSpout was started successfully');
-                //$this->convertExcelToHtmlViaSpout();
+            case 'ExcelToHtml':
+                Log::info('Function ExcelToHtml was started successfully');
+                $this->ExcelToHtml();
                 break;
 
             default:
@@ -70,7 +72,597 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
-    private function xlsxToXls()
+
+    private function ExcelToHtml(): void
+    {
+        // Получаем содержимое файла и обновляем статус
+        $fileContent = Storage::disk('local')->get($this->path);
+        $this->fileMetaData->update(["status" => "processing"]);
+
+        // Создаем временный файл
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+        file_put_contents($tempFilePath, $fileContent);
+
+        // Если исходный файл не xlsx – конвертируем через уже реализованную функцию
+        $extension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
+        if ($extension !== 'xlsx') {
+            $conversion = $this->xlsToXlsxAdditional(); // предполагается, что функция возвращает ['path'=>..., 'name'=>...]
+            $tempFilePath = $conversion['path'];
+            $name = $conversion['name'];
+        } else {
+            $name = $this->original_name;
+        }
+
+        // Создаем временную директорию для HTML-файлов
+        $tempHtmlDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('html_files_');
+        if (!mkdir($tempHtmlDir, 0755, true) && !is_dir($tempHtmlDir)) {
+            throw new \RuntimeException(sprintf('Directory "%s" was not created', $tempHtmlDir));
+        }
+
+        // Определяем число листов через Spout
+        $reader = new \OpenSpout\Reader\XLSX\Reader();
+        $reader->open($tempFilePath);
+        $sheetCount = 0;
+        foreach ($reader->getSheetIterator() as $sheet) {
+            $sheetCount++;
+        }
+        $reader->close();
+
+        // Если лист один – генерируем одиночный HTML-файл, иначе ZIP-архив
+        if ($sheetCount === 1) {
+            $outputFilePath = $this->processSingleSheetHtml($tempFilePath, $name);
+        } else {
+            $outputFilePath = $this->processMultipleSheetsToZipHtml($tempFilePath, $name, $tempHtmlDir);
+        }
+
+        // Обновляем метаданные файла с результатом конвертации
+        $this->fileMetaData->update(["status" => "completed", "output_path" => $outputFilePath]);
+
+        // Очистка временных файлов/директорий
+        $this->safeUnlink($tempFilePath);
+        $this->deleteDirectory($tempHtmlDir);
+    }
+
+    private function xlsToXlsxAdditional(): array
+    {
+        $tempDir = sys_get_temp_dir();
+        if (!is_writable($tempDir)) {
+            Log::error('Temp directory is not writable', ['path' => $tempDir]);
+            throw new \Exception("Temporary directory is not writable");
+        }
+
+        //$file = UserFile::findOrFail($id);
+        Log::info('file', ['file' => $this->original_name]);
+
+        // Получаем содержимое файла
+        $fileContent = Storage::disk('local')->get($this->path);
+
+        // Создаем временный файл
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+        $correctTempPath = $tempFilePath . '.xls';
+        rename($tempFilePath, $correctTempPath);
+        $tempFilePath = $correctTempPath;
+
+        file_put_contents($tempFilePath, $fileContent);
+        Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
+
+        try {
+            // Настройка читателя
+            $reader = IOFactory::createReader('Xls');
+            $reader->setReadDataOnly(true);
+
+            $sourceSpreadsheet = $reader->load($tempFilePath);
+
+            // Создаем новый XLS документ
+            $newSpreadsheet = new Spreadsheet();
+            $newSpreadsheet->removeSheetByIndex(0);
+
+            foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
+                $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
+                $newSpreadsheet->addSheet($newSheet);
+
+                $highestRow = $sourceSheet->getHighestDataRow(); // Последняя строка с данными
+                $highestColumn = $sourceSheet->getHighestDataColumn();
+
+                if ($highestRow == 1 && $sourceSheet->getCell('A1')->getValue() === null) {
+                    continue;
+                }
+
+                $data = $sourceSheet->rangeToArray(
+                    'A1:' . $highestColumn . $highestRow,
+                    null,
+                    true,
+                    false
+                );
+
+                $newSheet->fromArray($data);
+            }
+
+            $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($tempFilePath, PATHINFO_FILENAME) . '.xlsx';
+
+            $writer = IOFactory::createWriter($newSpreadsheet, 'Xlsx');
+            $writer->save($outputFilePath);
+            Log::info('XLSX file saved', ['path' => $outputFilePath, 'exists' => file_exists($outputFilePath)]);
+
+            // Освобождаем память
+            $sourceSpreadsheet->disconnectWorksheets();
+            $newSpreadsheet->disconnectWorksheets();
+            unset($sourceSpreadsheet, $newSpreadsheet);
+
+            if (!file_exists($outputFilePath)) {
+                Log::error('Output file does not exist', ['path' => $outputFilePath]);
+                throw new \Exception("Output file was not created");
+            }
+
+            if (!is_readable($outputFilePath)) {
+                Log::error('Output file is not readable', ['path' => $outputFilePath, 'perms' => substr(sprintf('%o', fileperms($outputFilePath)), -4)]);
+                throw new \Exception("Output file is not readable");
+            }
+
+            return ['path' => $outputFilePath, 'name' => pathinfo($this->original_name, PATHINFO_FILENAME)];
+        } catch (\Exception $e) {
+            Log::error('Conversion error: ' . $e->getMessage());
+            throw $e;
+        } finally {
+            $this->safeUnlink($tempFilePath);
+        }
+    }
+
+
+    private function processSingleSheetHtml(string $filePath, string $name): string
+    {
+        $outputFilePath = tempnam(sys_get_temp_dir(), 'html_') . '.html';
+        $html = $this->getHtmlHeader($name);
+
+        $reader = new \OpenSpout\Reader\XLSX\Reader();
+        $reader->open($filePath);
+        foreach ($reader->getSheetIterator() as $sheet) {
+            $html .= $this->generateSheetHtmlContent($sheet);
+        }
+        $reader->close();
+        $html .= $this->getHtmlFooter();
+
+        file_put_contents($outputFilePath, $html);
+        return $outputFilePath;
+    }
+
+
+    private function processMultipleSheetsToZipHtml(string $filePath, string $name, string $tempHtmlDir): string
+    {
+        $zipFilePath = tempnam(sys_get_temp_dir(), 'html_zip_') . '.zip';
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== TRUE) {
+            throw new \Exception("Cannot create ZIP archive");
+        }
+
+        $reader = new \OpenSpout\Reader\XLSX\Reader();
+        $reader->open($filePath);
+        foreach ($reader->getSheetIterator() as $sheet) {
+            $sheetName = $this->sanitizeFilename($sheet->getName());
+            $htmlFilePath = $tempHtmlDir . DIRECTORY_SEPARATOR . $sheetName . '.html';
+            $html = $this->getHtmlHeader($sheetName);
+            $html .= $this->generateSheetHtmlContent($sheet);
+            $html .= $this->getHtmlFooter();
+            file_put_contents($htmlFilePath, $html);
+            $zip->addFile($htmlFilePath, $sheetName . '.html');
+        }
+        $reader->close();
+        $zip->close();
+
+        return $zipFilePath;
+    }
+
+
+    private function getHtmlHeader(string $title): string
+    {
+        $styles = ".table-container {
+            max-width: 100%;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: DejaVu Sans;
+            color: #2d3748;
+            background: white;
+        }
+        body { font-size: 12px; }
+        caption {
+            padding: 1rem;
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #1a202c;
+            text-align: left;
+        }
+        th {
+            background-color: #4a5568;
+            color: white;
+            font-weight: 600;
+            text-align: left;
+            padding: 1rem;
+            border-right: 1px solid #e2e8f0;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tr:nth-of-type(even) { background-color: #f7fafc; }
+        td:first-child { border-right: 1px solid #e2e8f0; }
+        tr { transition: background-color 0.2s ease; }
+        tr:hover { background-color: #ebf8ff; }";
+
+        return "<!DOCTYPE html><html><head>\n<meta charset=\"UTF-8\">\n<style>$styles</style>\n</head><body><div class='table-container'>\n<h1>" . htmlspecialchars($title) . "</h1>\n";
+    }
+
+
+    private function getHtmlFooter(): string
+    {
+        return "</div></body></html>";
+    }
+
+
+    private function generateSheetHtmlContent($sheet): string
+    {
+        $html = "<table><caption>" . htmlspecialchars($sheet->getName()) . "</caption>";
+        $isFirstRow = true;
+
+        foreach ($sheet->getRowIterator() as $row) {
+            $html .= "<tr>";
+            foreach ($row->getCells() as $cell) {
+                $value = htmlspecialchars($cell->getValue());
+                $html .= $isFirstRow ? "<th>$value</th>" : "<td>$value</td>";
+            }
+            $html .= "</tr>";
+            $isFirstRow = false;
+        }
+
+        $html .= "</table><br>";
+        return $html;
+    }
+
+
+    private function deleteDirectory(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            is_dir($path) ? $this->deleteDirectory($path) : @unlink($path);
+        }
+        @rmdir($dir);
+    }
+
+    private function excelToCsv()
+    {
+        $fileContent = Storage::disk('local')->get($this->path);
+        $this->fileMetaData->update(["status" => "processing"]);
+
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+        file_put_contents($tempFilePath, $fileContent);
+        Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
+
+        try {
+            // Определяем ридер по расширению файла
+            $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
+            if ($fileExtension === 'xlsx') {
+                $reader = IOFactory::createReader('Xlsx');
+            } else {
+                $reader = IOFactory::createReader('Xls');
+            }
+
+            // Настройка читателя
+            $reader->setReadDataOnly(true);
+            $outputFilePath = "";
+
+            // Загружаем исходный excel файл
+            $sourceSpreadsheet = $reader->load($tempFilePath);
+
+            if ($sourceSpreadsheet->getSheetCount() === 1) {
+                $sourceSheet = $sourceSpreadsheet->getSheet(0);
+                $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
+
+                $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.csv';
+
+                $this->convertSheetToCsv($sourceSheet, $outputFilePath, $this->delimiter);
+
+                $sourceSpreadsheet->disconnectWorksheets();
+                unset($sourceSpreadsheet);
+
+                //return response()->download($outputFilePath, $sheetName . '.csv')->deleteFileAfterSend(true);
+
+            } else {
+                $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($this->original_name, PATHINFO_FILENAME) . '_csv.zip';
+                $zip = new \ZipArchive();
+
+                if ($zip->open($zipFilePath, \ZipArchive::CREATE) === TRUE) {
+                    foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
+                        $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
+                        $csvTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.csv';
+
+                        $this->convertSheetToCsv($sourceSheet, $csvTempPath, $this->delimiter);
+                        $zip->addFile($csvTempPath, $sheetName . '.csv');
+                    }
+                    $zip->close();
+
+                    foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
+                        $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
+                        $csvTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.csv';
+                        $this->safeUnlink($csvTempPath);
+                    }
+                }
+                $sourceSpreadsheet->disconnectWorksheets();
+                unset($sourceSpreadsheet);
+            }
+
+            if (!file_exists($outputFilePath)) {
+                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function excelToOds: Output file was not created");
+            } elseif (!file_exists($outputFilePath)) {
+                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function excelToOds: Output file was not created");
+            } else {
+                $this->fileMetaData->update(["status" => "completed"]);
+            }
+
+
+            $this->fileMetaData->update(["output_path" => $outputFilePath]);
+
+        } catch (\Exception $e) {
+            $this->fileMetaData->update(["status" => "failed"]);
+            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
+            throw $e;
+        } finally {
+            // Удаляем временные файлы
+            $this->safeUnlink($tempFilePath);
+        }
+    }
+
+
+    private function convertSheetToCsv($sourceSheet, string $outputFilePath, string $delimiter = ','): void
+    {
+        $highestRow = $sourceSheet->getHighestDataRow();
+        $highestColumn = $sourceSheet->getHighestDataColumn();
+
+        // Пропускаем пустые листы
+        if ($highestRow == 1 && $sourceSheet->getCell('A1')->getValue() === null) {
+            return;
+        }
+
+        $data = $sourceSheet->rangeToArray(
+            'A1:' . $highestColumn . $highestRow,
+            null,
+            true,
+            false
+        );
+        $csvFile = fopen($outputFilePath, 'w');
+
+        // Добавляем BOM для корректного отображения кириллицы в Excel
+        fwrite($csvFile, "\xEF\xBB\xBF");
+
+        // Обрабатываем первую строку (исправленная логика)
+        if (!empty($data[0])) {
+            $firstRow = $data[0];
+            for ($i = 0; $i < count($firstRow); $i++) {
+                if ($firstRow[$i] === null) {
+                    $firstRow[$i] = 0;
+                }
+            }
+            fputcsv($csvFile, $firstRow, $delimiter);
+        }
+
+        // Обрабатываем остальные строки
+        for ($i = 1; $i < count($data); $i++) {
+            fputcsv($csvFile, $data[$i], $delimiter);
+        }
+
+        fclose($csvFile);
+        Log::info('CSV file created', ['path' => $outputFilePath, 'size' => filesize($outputFilePath)]);
+    }
+
+
+    private function sanitizeFilename(string $filename): string
+    {
+        return preg_replace('/[\/:*?"<>|]/', '_', $filename);
+    }
+
+    private function excelToOds()
+    {
+        // Получаем содержимое файла
+        $fileContent = Storage::disk('local')->get($this->path);
+        $this->fileMetaData->update(["status" => "processing"]);
+
+        // Создаем временный файл
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+        file_put_contents($tempFilePath, $fileContent);
+
+        try {
+            if (strrchr($this->path, '.') == ".xlsx") {
+                $reader = IOFactory::createReader('Xlsx');
+            } else {
+                $reader = IOFactory::createReader('Xls');
+            }
+
+            // Настройка читателя
+            $reader->setReadDataOnly(true);
+
+            // Загружаем исходный ods файл
+            $sourceSpreadsheet = $reader->load($tempFilePath);
+
+            // Создаем новый документ
+            $newSpreadsheet = new Spreadsheet();
+            $newSpreadsheet->removeSheetByIndex(0);
+
+            foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
+                // Создаем лист в новом документе
+                $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
+                $newSpreadsheet->addSheet($newSheet);
+
+                $highestRow = $sourceSheet->getHighestDataRow(); // Последняя строка с данными
+                $highestColumn = $sourceSheet->getHighestDataColumn();
+
+                if ($highestRow == 1 && $sourceSheet->getCell('A1')->getValue() === null) {
+                    continue;
+                }
+
+                $data = $sourceSheet->rangeToArray(
+                    'A1:' . $highestColumn . $highestRow,
+                    null,
+                    true,
+                    false
+                );
+                $newSheet->fromArray($data);
+            }
+
+            $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($tempFilePath, PATHINFO_FILENAME) . '.ods';
+
+            $writer = IOFactory::createWriter($newSpreadsheet, 'Ods');
+            $writer->save($outputFilePath);
+            Log::info('ODS file saved', ['path' => $outputFilePath, 'exists' => file_exists($outputFilePath)]);
+
+            // Освобождаем память
+            $sourceSpreadsheet->disconnectWorksheets();
+            $newSpreadsheet->disconnectWorksheets();
+            unset($sourceSpreadsheet, $newSpreadsheet);
+
+            // if (!file_exists($outputFilePath)) {
+            //     Log::error('Output file does not exist', ['path' => $outputFilePath]);
+            //     throw new \Exception("Output file was not created");
+            // }
+
+            // if (!is_readable($outputFilePath)) {
+            //     Log::error('Output file is not readable', ['path' => $outputFilePath, 'perms' => substr(sprintf('%o', fileperms($outputFilePath)), -4)]);
+            //     throw new \Exception("Output file is not readable");
+            // }
+
+            if (!file_exists($outputFilePath)) {
+                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function excelToOds: Output file was not created");
+            } elseif (!file_exists($outputFilePath)) {
+                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function excelToOds: Output file was not created");
+            } else {
+                $this->fileMetaData->update(["status" => "completed"]);
+            }
+
+            $this->fileMetaData->update(["output_path" => $outputFilePath]);
+
+        } catch (\Exception $e) {
+            $this->fileMetaData->update(["status" => "failed"]);
+            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
+            throw $e;
+        } finally {
+            // Удаляем временные файлы
+            $this->safeUnlink($tempFilePath);
+        }
+    }
+
+    private function xlsToXlsx(): void
+    {
+        // Получаем содержимое файла
+        $fileContent = Storage::disk('local')->get($this->path);
+        $this->fileMetaData->update(["status" => "processing"]);
+
+        // Создаем временный файл
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+        file_put_contents($tempFilePath, $fileContent);
+
+        try {
+            // Настройка читателя
+            $reader = IOFactory::createReader('Xls');
+
+            // Загружаем исходный XLS файл
+            $sourceSpreadsheet = $reader->load($tempFilePath);
+
+            // Создаем новый XLSX документ
+            $newSpreadsheet = new Spreadsheet();
+            $newSpreadsheet->removeSheetByIndex(0);
+
+            foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
+                $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
+                $newSpreadsheet->addSheet($newSheet);
+
+                // Копируем основные свойства листа
+                $this->copySheetProperties($sourceSheet, $newSheet);
+
+                // Копируем объединенные ячейки
+                $this->copyMergedCells($sourceSheet, $newSheet);
+
+                // Копируем размеры столбцов и строк
+                $this->copyDimensions($sourceSheet, $newSheet);
+
+                // Копируем данные и стили с использованием массового подхода
+                $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
+
+                // Освобождаем память после обработки каждого листа
+                gc_collect_cycles();
+            }
+
+            // Формируем путь для выходного файла
+            $outputFilePath = tempnam(sys_get_temp_dir(), 'converted_') . '.xlsx';
+
+            Log::info('New path', ['path' => $outputFilePath]);
+
+            $writer = IOFactory::createWriter($newSpreadsheet, 'Xlsx');
+
+            $writer->save($outputFilePath);
+
+            if (file_exists($outputFilePath)) {
+                $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($fileInfo, $outputFilePath);
+                finfo_close($fileInfo);
+
+                Log::info('File MIME type check', [
+                    'path' => $outputFilePath,
+                    'mime_type' => $mimeType,
+                    'expected' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                ]);
+
+                // if (str_contains($mimeType, 'spreadsheetml') || str_contains($mimeType, 'xlsx')) {
+                //     $this->fileMetaData->update(["status" => "completed"]);
+                //     $this->fileMetaData->update(["output_path" => $outputFilePath]);
+                //     Log::info('XLS to XLSX conversion completed successfully');
+                // } else {
+                //     $this->fileMetaData->update(["status" => "failed"]);
+                //     Log::error('Converted file is not in XLSX format', ['mime_type' => $mimeType]);
+                //     throw new \Exception("Converted file is not in XLSX format");
+                // }
+            }
+
+            // Освобождаем память
+            $sourceSpreadsheet->disconnectWorksheets();
+            $newSpreadsheet->disconnectWorksheets();
+            unset($sourceSpreadsheet, $newSpreadsheet);
+
+            if (!file_exists($outputFilePath)) {
+                Log::error('Function xlsToXlsx: Output file does not exist', ['path' => $outputFilePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function xlsToXlsx: Output file was not created");
+            } else {
+                $this->fileMetaData->update(["status" => "completed"]);
+            }
+
+            $this->fileMetaData->update(["output_path" => $outputFilePath]);
+
+        } catch (\Exception $e) {
+            $this->fileMetaData->update(["status" => "failed"]);
+            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
+            throw $e;
+        } finally {
+            // Удаляем временные файлы
+            $this->safeUnlink($tempFilePath);
+        }
+    }
+
+    private function xlsxToXls(): void
     {
         // Получаем содержимое файла
         $fileContent = Storage::disk('local')->get($this->path);
@@ -133,7 +725,6 @@ class ConvertionJob implements ShouldQueue
                 $this->fileMetaData->update(["status" => "completed"]);
             }
 
-            //$outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '.xls';
             $this->fileMetaData->update(["output_path" => $outputFilePath]);
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
@@ -148,7 +739,6 @@ class ConvertionJob implements ShouldQueue
     private function copySheetProperties($sourceSheet, $newSheet): void
     {
         try {
-            Log::info('Function copySheetProperties was started successfully');
             $newSheet->getPageSetup()->setOrientation($sourceSheet->getPageSetup()->getOrientation());
             $newSheet->getPageSetup()->setPaperSize($sourceSheet->getPageSetup()->getPaperSize());
 
@@ -158,7 +748,6 @@ class ConvertionJob implements ShouldQueue
             $newSheet->getPageMargins()->setBottom($sourceSheet->getPageMargins()->getBottom());
 
             $newSheet->getSheetView()->setZoomScale($sourceSheet->getSheetView()->getZoomScale());
-            Log::info('Function copySheetProperties was finished successfully');
         } catch (\Exception $e) {
             Log::warning("Function copySheetProperties was finished unsuccessfully: Error copying sheet properties: " . $e->getMessage());
         }
@@ -284,7 +873,6 @@ class ConvertionJob implements ShouldQueue
     private function getSafeCellValue($cell)
     {
         try {
-            Log::info('Function getSafeCellValue was started successfully');
             $value = $cell->getValue();
 
             if (is_array($value)) {
@@ -295,7 +883,6 @@ class ConvertionJob implements ShouldQueue
                 return $value->__toString();
             }
 
-            Log::info('Function getSafeCellValue was finished successfully');
             return $value;
         } catch (\Exception $e) {
             Log::warning("Function getSafeCellValue was finished unsuccessfully: Error getting cell value: " . $e->getMessage());
@@ -321,14 +908,12 @@ class ConvertionJob implements ShouldQueue
 
     private function applyRowStylesOptimized($sheet, $rowNumber, $styles): void
     {
-        Log::info('Function applyRowStylesOptimized was started successfully');
         foreach ($styles as $col => $styleArray) {
             if (empty($styleArray))
                 continue;
 
             try {
                 $sheet->getStyle($col . $rowNumber)->applyFromArray($styleArray);
-                Log::info('Function applyRowStylesOptimized was finished successfully');
             } catch (\Exception $e) {
                 Log::error('Function applyRowStylesOptimized was finished unsuccessfully: Apply row styles from array error: ' . $e->getMessage());
             }
@@ -338,7 +923,6 @@ class ConvertionJob implements ShouldQueue
     private function safeUnlink(string $path): void
     {
         try {
-            Log::info('Function safeUnlink was started successfully');
             if (is_file($path)) { // Проверяем, что это файл, а не директория
                 if (@unlink($path)) { // Подавляем предупреждение, но проверяем результат
                     Log::info("File successfully deleted: {$path}");
@@ -346,7 +930,6 @@ class ConvertionJob implements ShouldQueue
                     Log::warning("Failed to delete file: {$path}");
                 }
             }
-            Log::info('Function safeUnlink was finished successfully');
         } catch (\Exception $e) {
             Log::error("Function safeUnlink was finished unsuccessfully: Error deleting file {$path}: " . $e->getMessage());
         }
