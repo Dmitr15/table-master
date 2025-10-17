@@ -43,7 +43,9 @@ class DownloadController extends Controller
 
             if (!empty($convertedFilePath) && file_exists($convertedFilePath)) {
 
-                $outputFileName = pathinfo($download->original_name, PATHINFO_FILENAME) . '.xls';
+                $outputExtension = pathinfo($download->output_path, PATHINFO_EXTENSION);
+
+                $outputFileName = pathinfo($download->original_name, PATHINFO_FILENAME) . '.' . $outputExtension;
 
                 return response()->download($convertedFilePath, $outputFileName, ['Content-Type' => 'application/octet-stream', 'Content-Disposition' => 'attachment; filename="' . $outputFileName . '"'])->deleteFileAfterSend(true);
             } else {
