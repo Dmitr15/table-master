@@ -30,13 +30,13 @@ class ConvertionJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(UserFile $fileMetaData, string $original_name, string $path, string $type)
+    public function __construct(UserFile $fileMetaData, string $original_name, string $path, string $type, string $delimiter = ',')
     {
         $this->fileMetaData = $fileMetaData;
         $this->original_name = $original_name;
         $this->path = $path;
         $this->typeOfConversation = $type;
-        $this->delimiter = ',';
+        $this->delimiter = $delimiter;
     }
 
     /**
@@ -65,10 +65,100 @@ class ConvertionJob implements ShouldQueue
                 Log::info('Function ExcelToHtml was started successfully');
                 $this->ExcelToHtml();
                 break;
+            case 'split':
+                Log::info('Function split was started successfully');
+                $this->split();
+                break;
+            case 'merge':
+                Log::info('Function merge was started successfully');
+                $this->merge();
+                break;
 
             default:
                 # code...
                 break;
+        }
+    }
+
+    private function merge(): void
+    {
+
+    }
+
+
+    private function split(): void
+    {
+        $fileContent = Storage::disk('local')->get($this->path);
+        $this->fileMetaData->update(["status" => "processing"]);
+
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+        file_put_contents($tempFilePath, $fileContent);
+        Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
+
+        try {
+            $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR .
+                pathinfo($this->original_name, PATHINFO_FILENAME) . '_split.zip';
+            $zip = new \ZipArchive();
+
+            $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
+            $reader = ($fileExtension === "xlsx") ?
+                IOFactory::createReader('Xlsx') :
+                IOFactory::createReader('Xls');
+
+            $sourceSpreadsheet = $reader->load($tempFilePath);
+
+            if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+                foreach ($sourceSpreadsheet->getAllSheets() as $sheet) {
+                    // Создаем новый Excel документ
+                    $newSpreadsheet = new Spreadsheet();
+                    $newSpreadsheet->removeSheetByIndex(0);
+
+                    // Добавляем текущий лист в новый документ
+                    $newSheet = clone $sheet;
+                    $newSpreadsheet->addSheet($newSheet);
+
+                    // Формируем безопасное имя файла на основе названия листа
+                    $sheetName = $this->sanitizeFilename($sheet->getTitle());
+                    $uniqueId = uniqid();
+                    $tempSheetPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR .
+                        $sheetName . '_' . $uniqueId . '.' . $fileExtension;
+
+                    // Создаем писатель с нужным форматом
+                    $writer = ($fileExtension === "xlsx") ?
+                        IOFactory::createWriter($newSpreadsheet, 'Xlsx') :
+                        IOFactory::createWriter($newSpreadsheet, 'Xls');
+
+                    $writer->save($tempSheetPath);
+
+                    // Добавляем файл в ZIP с корректным расширением
+                    $zip->addFile($tempSheetPath, $sheetName . '.' . $fileExtension);
+
+                    // Удаляем временный файл листа после добавления в архив
+                    $this->safeUnlink($tempSheetPath);
+
+                    $newSpreadsheet->disconnectWorksheets();
+                    unset($newSpreadsheet);
+                }
+                $zip->close();
+            }
+
+            if (!file_exists($zipFilePath)) {
+                Log::error('Function split: Output file does not exist', ['path' => $zipFilePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function split: Output file was not created");
+            } else {
+                $this->fileMetaData->update(["status" => "completed"]);
+            }
+
+            $this->fileMetaData->update(["output_path" => $zipFilePath]);
+
+        } catch (\Exception $e) {
+            $this->fileMetaData->update(["status" => "failed"]);
+            Log::error('Function split: Conversion error: ' . $e->getMessage());
+            throw $e;
+        } finally {
+            // Удаляем временный основной файл
+            $this->safeUnlink($tempFilePath);
         }
     }
 
@@ -372,14 +462,12 @@ class ConvertionJob implements ShouldQueue
 
                 $sourceSpreadsheet->disconnectWorksheets();
                 unset($sourceSpreadsheet);
-
-                //return response()->download($outputFilePath, $sheetName . '.csv')->deleteFileAfterSend(true);
-
             } else {
                 $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($this->original_name, PATHINFO_FILENAME) . '_csv.zip';
                 $zip = new \ZipArchive();
 
                 if ($zip->open($zipFilePath, \ZipArchive::CREATE) === TRUE) {
+
                     foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
                         $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
                         $csvTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.csv';
@@ -397,6 +485,8 @@ class ConvertionJob implements ShouldQueue
                 }
                 $sourceSpreadsheet->disconnectWorksheets();
                 unset($sourceSpreadsheet);
+
+                $outputFilePath = $zipFilePath;
             }
 
             if (!file_exists($outputFilePath)) {
