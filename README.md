@@ -81,3 +81,11 @@
     ```bash
     composer install
     ```
+3. **Выполните миграции для создания необходимых таблиц**
+    ```bash
+    php artisan migrate
+    ```
+4. **Настройка очереди, в отдельном терминале**
+    ```bash
+    php artisan queue:work
+    ```
