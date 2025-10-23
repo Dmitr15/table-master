@@ -33,6 +33,8 @@ Route::post('/file/{id}/excelToCsv', [ProcessFileController::class, 'excelToCsv_
 
 Route::post('/file/{id}/excelToHtml', [ProcessFileController::class, 'ExcelToHtml_v1'])->name('excelToHtml');
 
+Route::post('/file/{id}/split', [ProcessFileController::class, 'split'])->name('split');
+
 //route to check conversion status in 5 sec
 Route::get('/convert/check/{id}', [DownloadController::class, 'checkStatus'])->name('convert.check');
 
