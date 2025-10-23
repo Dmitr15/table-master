@@ -680,6 +680,13 @@
                                             <button type="submit" class="action-btn convert-btn">Convert to html</button>
                                         </form>
                                     </div>
+                                    <div class="split">
+                                        <form class="conversion-form" data-file-id="{{$file->id}}"
+                                            data-conversion-type="split">
+                                            @csrf
+                                            <button type="submit" class="action-btn convert-btn">split</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </article>
@@ -975,7 +982,8 @@
                     'xlsToXlsx': '/file/' + fileId + '/xlsToXlsx',
                     'excelToOds': '/file/' + fileId + '/excelToOds',
                     'excelToCsv': '/file/' + fileId + '/excelToCsv',
-                    'excelToHtml': '/file/' + fileId + '/excelToHtml'
+                    'excelToHtml': '/file/' + fileId + '/excelToHtml',
+                    'split': '/file/' + fileId + '/split'
                 };
                 return routes[conversionType];
             }
