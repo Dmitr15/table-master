@@ -99,6 +99,7 @@ class ConvertionJob implements ShouldQueue
             $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR .
                 pathinfo($this->original_name, PATHINFO_FILENAME) . '_split.zip';
             $zip = new \ZipArchive();
+            Log::info("print after zip creation");
 
             $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
             $reader = ($fileExtension === "xlsx") ?
@@ -108,38 +109,55 @@ class ConvertionJob implements ShouldQueue
             $sourceSpreadsheet = $reader->load($tempFilePath);
 
             if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+                $tempSheets = [];
                 foreach ($sourceSpreadsheet->getAllSheets() as $sheet) {
-                    // Создаем новый Excel документ
-                    $newSpreadsheet = new Spreadsheet();
-                    $newSpreadsheet->removeSheetByIndex(0);
+                    // Создаем новый Excel документ (отдельный файл для листа)
+                    $newSpreadsheetForSheet = new Spreadsheet();
+                    $newSpreadsheetForSheet->removeSheetByIndex(0);
 
-                    // Добавляем текущий лист в новый документ
-                    $newSheet = clone $sheet;
-                    $newSpreadsheet->addSheet($newSheet);
+                    // Создаем пустой лист, связанный с новым Spreadsheet
+                    $newSheet = new Worksheet($newSpreadsheetForSheet, $sheet->getTitle());
+                    $newSpreadsheetForSheet->addSheet($newSheet);
 
-                    // Формируем безопасное имя файла на основе названия листа
+                    // Копируем содержимое и структуры (мерджи, размеры, стили) через существующие методы
+                    try {
+                        $this->copyMergedCells($sheet, $newSheet);
+                        $this->copyDimensions($sheet, $newSheet);
+                        // Копирование ячеек и стилей (оптимизированный метод уже в классе)
+                        $this->copyCellsWithArrayStyles($sheet, $newSheet);
+                    } catch (\Exception $e) {
+                        Log::warning('Split: warning while copying sheet content: ' . $e->getMessage(), ['sheet' => $sheet->getTitle()]);
+                    }
+
+                    // Формируем безопасный путь для временного файла листа
                     $sheetName = $this->sanitizeFilename($sheet->getTitle());
                     $uniqueId = uniqid();
-                    $tempSheetPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR .
-                        $sheetName . '_' . $uniqueId . '.' . $fileExtension;
+                    $tempSheetPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '_' . $uniqueId . '.' . $fileExtension;
 
-                    // Создаем писатель с нужным форматом
+                    // Создаем писатель и сохраняем файл
                     $writer = ($fileExtension === "xlsx") ?
-                        IOFactory::createWriter($newSpreadsheet, 'Xlsx') :
-                        IOFactory::createWriter($newSpreadsheet, 'Xls');
+                        IOFactory::createWriter($newSpreadsheetForSheet, 'Xlsx') :
+                        IOFactory::createWriter($newSpreadsheetForSheet, 'Xls');
 
                     $writer->save($tempSheetPath);
 
                     // Добавляем файл в ZIP с корректным расширением
-                    $zip->addFile($tempSheetPath, $sheetName . '.' . $fileExtension);
+                    $added = $zip->addFile($tempSheetPath, $sheetName . '.' . $fileExtension);
+                    if ($added === false) {
+                        Log::warning('Split: failed to add file to zip', ['file' => $tempSheetPath, 'zip' => $zipFilePath]);
+                    } else {
+                        $tempSheets[] = $tempSheetPath;
+                    }
 
-                    // Удаляем временный файл листа после добавления в архив
-                    $this->safeUnlink($tempSheetPath);
-
-                    $newSpreadsheet->disconnectWorksheets();
-                    unset($newSpreadsheet);
+                    // Освобождаем память
+                    $newSpreadsheetForSheet->disconnectWorksheets();
+                    unset($newSpreadsheetForSheet, $newSheet);
                 }
                 $zip->close();
+            }
+
+            foreach ($tempSheets as $tmp) {
+                $this->safeUnlink($tmp);
             }
 
             if (!file_exists($zipFilePath)) {
