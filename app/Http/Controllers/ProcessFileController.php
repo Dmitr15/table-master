@@ -68,6 +68,40 @@ class ProcessFileController extends Controller
         }
     }
 
+    public function split(string $id)
+    {
+        $tempDir = sys_get_temp_dir();
+        if (!is_writable($tempDir)) {
+            Log::error('Temp directory is not writable', ['path' => $tempDir]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Temporary directory is not writable'
+            ], 500);
+        }
+        try {
+            $file = UserFile::findOrFail($id);
+            Log::info('Starting splitting with array-based styling', ['file_id' => $id]);
+
+            ConvertionJob::dispatch($file, $file->original_name, $file->path, "split");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Splitting started successfully',
+                'file_id' => $file->id
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Splitting error: ' . $e->getMessage());
+            if (isset($file)) {
+                $file->update(['status' => 'failed']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function xlsToXlsx_v1(string $id)
     {
         $tempDir = sys_get_temp_dir();
@@ -391,7 +425,7 @@ class ProcessFileController extends Controller
                 unset($sourceSpreadsheet);
 
                 return response()->download($outputFilePath, $sheetName . '.csv')->deleteFileAfterSend(true);
-            
+
             } else {
 
                 $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($file->original_name, PATHINFO_FILENAME) . '_csv.zip';
