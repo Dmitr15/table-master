@@ -14,7 +14,7 @@
         body {
             margin: 0;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #dcdbed, #4338ca);
+            background: linear-gradient(135deg, #dcdbed, #4c4a53);
             color: #333;
             display: flex;
             align-items: center;
@@ -123,7 +123,7 @@
 
         <button type="submit" class="btn mt-4">Log In</button>
 
-        <a href="{{route('password.request')}}">Forgot your password?</a>
+        {{-- <a href="{{route('password.request')}}">Forgot your password?</a> --}}
         <a href="{{route('register')}}">Register</a>
 
         @if ($errors->any())
