@@ -4,6 +4,7 @@ use App\Http\Controllers\FileController;
 use App\Http\Controllers\DownloadController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProcessFileController;
 
 
 Route::view('/', 'index')->name('index');
@@ -18,7 +19,7 @@ Route::get('/dashboard', [FileController::class, 'index'])->name('dashboard')->m
 Route::resource('files', FileController::class)->middleware('auth');
 
 
-Route::middleware('auth')->controller(AuthController::class)->group(function () {
+Route::middleware('auth')->controller(ProcessFileController::class)->group(function () {
     //routes for conversion files
     Route::post('/file/{id}/xlsxToXls', 'xlsxToXls_v1')->name('xlsxToXls');
 
@@ -31,6 +32,8 @@ Route::middleware('auth')->controller(AuthController::class)->group(function () 
     Route::post('/file/{id}/excelToHtml', 'ExcelToHtml_v1')->name('excelToHtml');
 
     Route::post('/file/{id}/split', 'split')->name('split');
+
+    Route::post('/file/{id}/merge', 'merge')->name('merge');
 });
 
 
