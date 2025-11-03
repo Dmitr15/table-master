@@ -399,9 +399,9 @@
                     <h1><a href="#">Table Master</a></h1>
                     <nav>
                         <ul>
-                            <li><a href="#">Home</a></li>
+                            <li><a href="{{ route('index') }}">Home</a></li>
                             <li><a href="#">About</a></li>
-                            <li><a href="#">Blog</a></li>
+                            <li><a href="{{ route('dashboard') }}">Dashboard</a></li>
                             @auth
                                 <span>Hi there, {{Auth::user()->name}}</span>
                                 <form action="{{route('logout')}}" method="post" style="margin:0;">
@@ -427,9 +427,6 @@
                                     <div class="conversion-info" id="conversion-info-{{$file->id}}"></div>
                                 </div>
                                 <div class="row__btn">
-                                    <div class="view">
-                                        <a href="{{route('files.show', $file->id)}}">View</a>
-                                    </div>
                                     <div class="delete">
                                         <form action="{{route('files.destroy', $file->id)}}" method="post"
                                             class="delete-form">
