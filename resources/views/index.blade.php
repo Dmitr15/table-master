@@ -1,115 +1,3 @@
-{{--
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Table Master</title>
-    <style>
-        body {
-            /* font-family: sans-serif;
-            background: #f9f9f9;
-            margin: 0;
-            padding: 2rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh; */
-
-            margin: 0;
-            font-family: sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
-            line-height: 1.6;
-            justify-content: center;
-            align-items: center;
-            display: flex;
-        }
-
-        form {
-            background: #fff;
-            padding: 1.5rem 2rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            width: 100%;
-            max-width: 400px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
-
-        input[type="file"] {
-            display: block;
-            margin-bottom: 1rem;
-        }
-
-        .file-name {
-            font-size: 0.9rem;
-            color: #555;
-            margin-bottom: 1rem;
-        }
-
-        .error {
-            color: #c00;
-            font-size: 0.9rem;
-            margin-top: -0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        button {
-            display: inline-block;
-            padding: 0.6rem 1.2rem;
-            background: #007acc;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-
-        button:hover {
-            background: #005f99;
-        }
-    </style>
-</head>
-
-<body>
-    <form action="{{route('files.store')}}" method="POST" enctype="multipart/form-data">
-        @csrf
-
-        <div>
-            <label for="xls_file">Choose file</label>
-            <input type="file" name="xls_file" id="xls_file">
-            <p class="file-name" id="file-name">No file selected</p>
-            @error('body')
-            <p class="error">{{$message}}</p>
-            @enderror
-        </div>
-
-        <button type="submit">Upload</button>
-    </form>
-
-    <script>
-        const fileInput = document.getElementById('xls_file');
-        const fileName = document.getElementById('file-name');
-
-        fileInput.addEventListener('change', () => {
-            fileName.textContent = fileInput.files.length > 0
-                ? fileInput.files[0].name
-                : 'No file selected';
-        });
-    </script>
-</body>
-
-</html> --}}
-
-
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -153,6 +41,7 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 20px;
+            justify-content: center;
         }
 
         /* Шапка */
@@ -376,6 +265,18 @@
                 font-size: 2rem;
             }
         }
+
+        .btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #1f2937;
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            color: #4f46e5;
+        }
     </style>
 </head>
 
@@ -384,12 +285,26 @@
     <header>
         <div class="container">
             <nav class="navbar">
-                <a href="#" class="logo">ExcelMaster</a>
+                <a href="{{ route('index') }}" class="logo">ExcelMaster</a>
                 <ul class="nav-links">
-                    <li><a href="#features">Возможности</a></li>
-                    <li><a href="#how-it-works">Как это работает</a></li>
+                    <li><a href="{{ route('index') }}">Home</a></li>
+                    <li><a href="#">About</a></li>
                     <li><a href="#benefits">Преимущества</a></li>
                     <li><a href="#contact">Контакты</a></li>
+                    @guest
+                        <a href="{{route('login')}}" class="text-gray-500 hover:text-primary transition duration-300">Log
+                            in</a>
+                        <a href="{{route('register')}}" class="text-primary font-medium border-b-2 border-primary pb-1">Sign
+                            Up</a>
+                    @endguest
+                    @auth
+                        <span>Hi there, {{Auth::user()->name}}</span>
+                        <form action="{{route('logout')}}" method="post" style="margin:0;">
+                            @csrf
+                            <button class="btn" onclick="event.preventDefault(); this.closest('form').submit();">Log
+                                Out</button>
+                        </form>
+                    @endauth
                 </ul>
                 <button class="mobile-menu-btn">☰</button>
             </nav>
@@ -401,7 +316,7 @@
         <div class="container">
             <h1>Профессиональная конвертация Excel файлов</h1>
             <p>Быстрое и точное преобразование между XLS, XLSX, CSV, ODS и HTML форматами</p>
-            <a href="#features" class="cta-button">Узнать больше</a>
+            <a href="{{ route('dashboard') }}" class="cta-button">Загрузить файл</a>
         </div>
     </section>
 
@@ -433,7 +348,7 @@
                 <div class="feature-card">
                     <div class="feature-icon">🚀</div>
                     <h3>Оптимизация памяти</h3>
-                    <p>Эффективная работа с большими файлами до 50 000 строк без потери производительности</p>
+                    <p>Эффективная работа с большими файлами до 2 GB без потери производительности</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">💾</div>
