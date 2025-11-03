@@ -26,19 +26,23 @@ class ConvertionJob implements ShouldQueue
     protected $typeOfConversation;
     protected $fileMetaData;
     protected $mergedFilePath;
+    //protected $fileMerge;
+
 
 
     /**
      * Create a new job instance.
      */
-    public function __construct(UserFile $fileMetaData, string $original_name, string $path, string $type, string $delimiter = ',', string $mergedFilePath = "")
+    public function __construct(UserFile $fileMetaData, string $original_name, string $path, string $type, string $delimiter = ',', string $mergeFilePath = '')
     {
         $this->fileMetaData = $fileMetaData;
         $this->original_name = $original_name;
         $this->path = $path;
         $this->typeOfConversation = $type;
         $this->delimiter = $delimiter;
-        $this->mergedFilePath = $mergedFilePath;
+
+        $this->mergedFilePath = $mergeFilePath;
+
     }
 
     /**
@@ -84,98 +88,115 @@ class ConvertionJob implements ShouldQueue
 
     private function merge(): void
     {
+        // Проверяем, что путь к файлу для слияния существует
+        if (empty($this->mergedFilePath) || !Storage::disk('local')->exists($this->mergedFilePath)) {
+            $this->fileMetaData->update(["status" => "failed"]);
+            throw new \Exception("Merge file not found or path is empty");
+        }
+
         $fileContent = Storage::disk('local')->get($this->path);
         $this->fileMetaData->update(["status" => "processing"]);
 
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'merge_source_');
+        // Получаем расширения файлов
+        $sourceExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
+        $mergeExtension = strtolower(pathinfo($this->mergedFilePath, PATHINFO_EXTENSION));
+
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'merge_source_') . '.' . $sourceExtension;
         file_put_contents($tempFilePath, $fileContent);
-        Log::info('Merge: Temp source file created', ['path' => $tempFilePath]);
 
         try {
-            $targetFile = $this->mergedFilePath;
-            if (!$targetFile) {
-                throw new \Exception("Target file not found with ID ");
-            }
+            // Получаем содержимое файла для слияния, второй файл
+            $mergeFileContent = Storage::disk('local')->get($this->mergedFilePath);
+            $mergeTempFilePath = tempnam(sys_get_temp_dir(), 'merge_target_') . '.' . $mergeExtension;
+            file_put_contents($mergeTempFilePath, $mergeFileContent);
 
-            // Получаем содержимое целевого файла
-            $targetFileContent = Storage::disk('local')->get($targetFile);
-            $targetTempFilePath = tempnam(sys_get_temp_dir(), 'merge_target_');
-            file_put_contents($targetTempFilePath, $targetFileContent);
-            Log::info('Merge: Temp target file created', ['path' => $targetTempFilePath]);
-
-            // Определяем ридеры для обоих файлов
-            $sourceExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
-            $targetExtension = pathinfo($targetFile, PATHINFO_EXTENSION);
+            Log::info('Merge: Temp files created', [
+                'source' => $tempFilePath,
+                'merge' => $mergeTempFilePath,
+                'source_extension' => $sourceExtension,
+                'merge_extension' => $mergeExtension,
+            ]);
 
             $sourceReader = ($sourceExtension === "xlsx") ?
                 IOFactory::createReader('Xlsx') :
                 IOFactory::createReader('Xls');
 
-            $targetReader = ($targetExtension === "xlsx") ?
+            $mergeReader = ($mergeExtension === "xlsx") ?
                 IOFactory::createReader('Xlsx') :
                 IOFactory::createReader('Xls');
 
             // Загружаем оба файла
             $sourceSpreadsheet = $sourceReader->load($tempFilePath);
-            $targetSpreadsheet = $targetReader->load($targetTempFilePath);
+            $mergeSpreadsheet = $mergeReader->load($mergeTempFilePath);
 
             Log::info('Merge: Files loaded', [
                 'source_sheets' => $sourceSpreadsheet->getSheetCount(),
-                'target_sheets' => $targetSpreadsheet->getSheetCount()
+                'merge_sheets' => $mergeSpreadsheet->getSheetCount()
             ]);
 
-            // Копируем все листы из исходного файла в целевой
-            foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
-                $sheetName = $this->getUniqueSheetName($targetSpreadsheet, $sourceSheet->getTitle());
+            // Копируем все листы из файла для слияния в исходный файл
+            foreach ($mergeSpreadsheet->getAllSheets() as $mergeSheet) {
+                $sheetName = $this->getUniqueSheetName($sourceSpreadsheet, $mergeSheet->getTitle());
 
                 Log::info('Merge: Copying sheet', [
-                    'original_name' => $sourceSheet->getTitle(),
+                    'original_name' => $mergeSheet->getTitle(),
                     'new_name' => $sheetName
                 ]);
 
-                // Создаем новый лист в целевом файле
-                $newSheet = new Worksheet($targetSpreadsheet, $sheetName);
-                $targetSpreadsheet->addSheet($newSheet);
+                // Создаем новый лист в исходном файле
+                $newSheet = new Worksheet($sourceSpreadsheet, $sheetName);
+                $sourceSpreadsheet->addSheet($newSheet);
 
-                // Копируем содержимое и стили
-                $this->copySheetProperties($sourceSheet, $newSheet);
-                $this->copyMergedCells($sourceSheet, $newSheet);
-                $this->copyDimensions($sourceSheet, $newSheet);
-                $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
+                // Копируем содержимое
+                $this->copySheetProperties($mergeSheet, $newSheet);
+                $this->copyMergedCells($mergeSheet, $newSheet);
+                $this->copyDimensions($mergeSheet, $newSheet);
+                $this->copyCellsWithArrayStyles($mergeSheet, $newSheet);
 
-                // Освобождаем память после каждого листа
                 gc_collect_cycles();
             }
 
-            // Сохраняем обновленный целевой файл
-            $outputWriter = ($sourceExtension === "xlsx") ?
-                IOFactory::createWriter($targetSpreadsheet, 'Xlsx') :
-                IOFactory::createWriter($targetSpreadsheet, 'Xls');
+            // Сохраняем объединенный файл
+            $outputExtension = $sourceExtension; // Сохраняем в формате исходного файла
 
-            $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR .
-                pathinfo($this->original_name, PATHINFO_FILENAME) . $sourceExtension;
+            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_merged_' . uniqid() . '.' . $outputExtension;
 
-            $outputWriter->save($outputFilePath);
-            Log::info('Merge: Merged file saved', ['path' => $outputFilePath]);
+            $mergedStoragePath = 'merged_files/' . $outputFileName;
 
-            // Обновляем статус исходного файла (который мы только что объединили)
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('merged_files')) {
+                Storage::disk('local')->makeDirectory('merged_files');
+            }
+
+            // Сохраняем во временный файл, затем в Storage
+            $tempOutputPath = tempnam(sys_get_temp_dir(), 'merge_output_') . '.' . $outputExtension;
+            $outputWriter = ($outputExtension === "xlsx") ?
+                IOFactory::createWriter($sourceSpreadsheet, 'Xlsx') :
+                IOFactory::createWriter($sourceSpreadsheet, 'Xls');
+
+            $outputWriter->save($tempOutputPath);
+
+            // Сохраняем в Storage
+            Storage::disk('local')->put($mergedStoragePath, file_get_contents($tempOutputPath));
+
+            // Обновляем статус
             $this->fileMetaData->update([
-                "status" => "merged",
-                "output_path" => $outputFilePath // или null, в зависимости от логики
+                "status" => "completed",
+                "output_path" => $mergedStoragePath // Сохраняем относительный путь
+            ]);
+
+            Log::info('Merge: Operation completed successfully', [
+                'merged_file_name' => $outputFileName,
+                'output_path' => $mergedStoragePath
             ]);
 
             // Освобождаем память
             $sourceSpreadsheet->disconnectWorksheets();
-            $targetSpreadsheet->disconnectWorksheets();
-            unset($sourceSpreadsheet, $targetSpreadsheet);
+            $mergeSpreadsheet->disconnectWorksheets();
+            unset($sourceSpreadsheet, $mergeSpreadsheet);
 
-            if (!file_exists($outputFilePath)) {
-                Log::error('Merge: Output file does not exist', ['path' => $outputFilePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Merge: Output file was not created");
-            }
-
-            Log::info('Merge: Operation completed successfully');
+            // Удаляем временный выходной файл
+            $this->safeUnlink($tempOutputPath);
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
@@ -184,11 +205,12 @@ class ConvertionJob implements ShouldQueue
         } finally {
             // Удаляем временные файлы
             $this->safeUnlink($tempFilePath);
-            if (isset($targetTempFilePath)) {
-                $this->safeUnlink($targetTempFilePath);
+            if (isset($mergeTempFilePath)) {
+                $this->safeUnlink($mergeTempFilePath);
             }
         }
     }
+
 
     /**
      * Генерирует уникальное имя для листа, чтобы избежать конфликтов
