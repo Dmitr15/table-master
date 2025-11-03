@@ -10,6 +10,7 @@ use App\Models\UserFile;
 use Illuminate\Support\Facades\Log;
 use OpenSpout\Reader\XLSX\Reader;
 use App\Jobs\ConvertionJob;
+use Illuminate\Http\Request;
 
 
 error_reporting(E_ALL);
@@ -30,6 +31,38 @@ class ProcessFileController extends Controller
         $data = $sheet->toArray();
 
         return $data;
+    }
+
+
+    public function merge(Request $request, string $id)
+    {
+        Log::info('Starting merge operation', ['file_id' => $id]);
+        try {
+            $mainFile = UserFile::findOrFail($id);
+            Log::info('Starting merge operation', ['file_id' => $id]);
+
+            $request->validate([
+                'merge_file' => 'required|file|mimes:xls,xlsx|max:50000'
+            ]);
+
+            // Сохраняем загруженный файл для merge           
+            $mergeFilePath = $request->file('merge_file')->store('temp_merge_files');
+
+            ConvertionJob::dispatch($mainFile, $mainFile->original_name, $mainFile->path, "merge", ',', $mergeFilePath);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Merge operation started successfully',
+                'file_id' => $mainFile->id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Merge error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function xlsxToXls_v1(string $id)
