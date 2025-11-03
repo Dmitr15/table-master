@@ -47,24 +47,6 @@ class FileController extends Controller
         return back()->with('success', 'Your file was loaded');
     }
 
-    public function storeForMerge(Request $request)
-    {
-        $request->validate([
-            'xls_file' => ['nullable', 'file', 'max:50000', 'mimes:xls,xlsx']
-        ]);
-
-        $path = null;
-        if ($request->hasFile('xls_file')) {
-            // Безопасное оригинальное имя
-            $originalName = $this->sanitizeFileName($request->xls_file->getClientOriginalName());
-
-            // Путь к файлу
-            $path = Storage::disk('local')->put('excel_files', $request->xls_file);
-        }
-        //$file = UserFile::create(['original_name' => $originalName, 'path' => $path]);
-        return back()->with('success', 'Your file was loaded');
-    }
-
     private function sanitizeFileName($fileName)
     {
         // Удаляем небезопасные символы
