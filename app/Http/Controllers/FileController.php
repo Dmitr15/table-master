@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\UserFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpSpreadsheet\IOFactory;
+use Illuminate\Support\Facades\Auth;
 
 class FileController extends Controller
 {
@@ -14,7 +14,11 @@ class FileController extends Controller
      */
     public function index()
     {
-        $files = UserFile::orderBy('id', 'desc')->get();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $files = $user->excelFiles()->orderBy('id', 'desc')->get();
+
         return view('dashboard', ['files' => $files]);
     }
 
@@ -32,22 +36,38 @@ class FileController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'xls_file' => ['nullable', 'file', 'max:50000', 'mimes:xls,xlsx']
+            'xls_file' => ['required', 'file', 'max:500000', 'mimes:xls,xlsx']
         ]);
 
-        $path = null;
-        if ($request->hasFile('xls_file')) {
-            // Безопасное оригинальное имя
+        if (!Auth::check()) {
+            return back()->with('error', 'Необходима авторизация');
+        }
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        try {
             $originalName = $this->sanitizeFileName($request->xls_file->getClientOriginalName());
 
-            // Путь к файлу
-            $path = Storage::disk('local')->put('excel_files', $request->xls_file);
+            // Создаем путь с ID пользователя: excel_files/user_{id}/
+            $userDirectory = 'excel_files/user_' . $user->id;
+
+            $path = $request->file('xls_file')->store($userDirectory, 'local');
+
+            UserFile::create([
+                'user_id' => $user->id,
+                'original_name' => $originalName,
+                'path' => $path,
+            ]);
+
+            return back()->with('success', 'File loaded successfully');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error while loading file: ' . $e->getMessage());
         }
-        $file = UserFile::create(['original_name' => $originalName, 'path' => $path]);
-        return back()->with('success', 'Your file was loaded');
     }
 
-    private function sanitizeFileName($fileName)
+    private function sanitizeFileName($fileName): string
     {
         // Удаляем небезопасные символы
         $dangerousCharacters = array(" ", '"', "'", "&", "/", "\\", "?", "#", "%", "<", ">", "|", ":", ";", "*", "+", "=", "{", "}", "[", "]", ",", "~", "`", "!");
@@ -72,42 +92,7 @@ class FileController extends Controller
      */
     public function show(string $id)
     {
-        $file = UserFile::find($id);
-        $file = UserFile::find("$id");
-
-        if (!$file) {
-            throw new \Exception("File record not found.");
-        }
-
-        if (!Storage::disk('local')->exists($file->path)) {
-            $absolutePath = Storage::disk('local')->path($file->path);
-
-            $storageRoot = Storage::disk('local')->path('');
-            $fullPath = $storageRoot . $file->path;
-
-            abort(404, "File not found. "
-                . "Storage path: '{$file->path}'. "
-                . "Absolute path: '{$absolutePath}'. "
-                . "Full path: '{$fullPath}'. "
-                . "Storage root: '{$storageRoot}'");
-        }
-
-        $fileContent = Storage::disk('local')->get($file->path);
-
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
-
-        try {
-            $spreadsheet = IOFactory::load($tempFilePath);
-            $sheet = $spreadsheet->getActiveSheet();
-            $data = $sheet->toArray();
-        } finally {
-            if (file_exists($tempFilePath)) {
-                unlink($tempFilePath);
-            }
-        }
-
-        return view('view', ['data' => $data, 'name' => $file->original_name]);
+        //
     }
 
     /**
@@ -132,19 +117,28 @@ class FileController extends Controller
     public function destroy(string $id)
     {
         try {
-            $file = UserFile::findOrFail($id);
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            $file = $user->excelFiles()->findOrFail($id);
+
+            // Удаляем основной файл
             if (Storage::disk('local')->exists($file->path)) {
                 Storage::disk('local')->delete($file->path);
             }
 
-            $file->delete();
-            return back()->with('success', 'File successfully deleted');
+            // Удаляем обработанный файл (если существует)
+            if ($file->output_path && Storage::disk('local')->exists($file->output_path)) {
+                Storage::disk('local')->delete($file->output_path);
+            }
 
+            // Удаляем запись из базы данных
+            $file->delete();
+
+            return back()->with('success', 'File deleted successfully');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            // Если файл не найден в базе данных
             return back()->with('error', 'File not found in database');
         } catch (\Exception $e) {
-            // Любая другая ошибка
             return back()->with('error', 'An error occurred while deleting the file: ' . $e->getMessage());
         }
     }
