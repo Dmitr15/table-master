@@ -521,250 +521,7 @@
 
     <script>
 
-        // document.addEventListener('DOMContentLoaded', function () {
-        //     // Обработчик для всех форм конвертации
-        //     document.querySelectorAll('.conversion-form').forEach(form => {
-        //         form.addEventListener('submit', function (e) {
-        //             e.preventDefault();
 
-        //             const fileId = this.dataset.fileId;
-        //             const conversionType = this.dataset.conversionType;
-        //             const button = this.querySelector('.convert-btn');
-        //             const conversionInfo = document.getElementById(`conversion-info-${fileId}`);
-
-        //             // Показываем индикатор загрузки
-        //             button.disabled = true;
-        //             button.innerHTML = 'Converting... <span class="loading"></span>';
-
-        //             // Показываем статус
-        //             conversionInfo.innerHTML = '<span class="conversion-status status-processing">Conversion in progress...</span>';
-
-        //             // Отправляем AJAX запрос
-        //             fetch(getConversionUrl(conversionType, fileId), {
-        //                 method: 'POST',
-        //                 headers: {
-        //                     'Content-Type': 'application/json',
-        //                     'X-CSRF-TOKEN': this.querySelector('input[name="_token"]').value,
-        //                     'Accept': 'application/json'
-        //                 },
-        //                 body: JSON.stringify({})
-        //             })
-        //                 .then(response => {
-        //                     if (!response.ok) {
-        //                         throw new Error('Network response was not ok');
-        //                     }
-        //                     return response.json();
-        //                 })
-        //                 .then(data => {
-        //                     if (data.success) {
-        //                         // Запускаем проверку статуса
-        //                         checkConversionStatus(fileId, conversionInfo, button, conversionType);
-        //                     } else {
-        //                         throw new Error(data.message || 'Conversion failed');
-        //                     }
-        //                 })
-        //                 .catch(error => {
-        //                     console.error('Error:', error);
-        //                     button.disabled = false;
-        //                     button.textContent = getButtonText(conversionType);
-        //                     conversionInfo.innerHTML = '<span class="conversion-status status-failed">Conversion failed: ' + error.message + '</span>';
-
-        //                     // Через 5 секунд убираем сообщение об ошибке
-        //                     setTimeout(() => {
-        //                         conversionInfo.innerHTML = '';
-        //                     }, 5000);
-        //                 });
-        //         });
-        //     });
-
-        //     // Функция для проверки статуса конвертации
-        //     function checkConversionStatus(fileId, conversionInfo, button, conversionType) {
-        //         let attempts = 0;
-        //         const maxAttempts = 60; // Максимум 2 минуты (60 попыток * 2 секунды)
-
-        //         const checkInterval = setInterval(() => {
-        //             attempts++;
-
-        //             fetch(`/convert/check/${fileId}`)
-        //                 .then(response => {
-        //                     if (!response.ok) {
-        //                         throw new Error('Status check failed');
-        //                     }
-        //                     return response.json();
-        //                 })
-        //                 .then(data => {
-        //                     if (data.status === 'completed') {
-        //                         clearInterval(checkInterval);
-        //                         button.disabled = false;
-        //                         button.textContent = getButtonText(conversionType);
-        //                         conversionInfo.innerHTML = `
-        //                             <div class="file-status">
-        //                                 <span class="conversion-status status-completed">Conversion completed!</span>
-        //                                 <a href="${data.file}" class="download-link">Download converted file</a>
-        //                             </div>
-        //                         `;
-
-        //                         // Через 10 секунд убираем сообщение об успехе
-        //                         setTimeout(() => {
-        //                             conversionInfo.innerHTML = '';
-        //                         }, 10000);
-        //                     } else if (data.status === 'failed') {
-        //                         clearInterval(checkInterval);
-        //                         button.disabled = false;
-        //                         button.textContent = getButtonText(conversionType);
-        //                         conversionInfo.innerHTML = '<span class="conversion-status status-failed">Conversion failed</span>';
-
-        //                         setTimeout(() => {
-        //                             conversionInfo.innerHTML = '';
-        //                         }, 5000);
-        //                     } else if (attempts >= maxAttempts) {
-        //                         // Превышено максимальное время ожидания
-        //                         clearInterval(checkInterval);
-        //                         button.disabled = false;
-        //                         button.textContent = getButtonText(conversionType);
-        //                         conversionInfo.innerHTML = '<span class="conversion-status status-failed">Conversion timeout</span>';
-
-        //                         setTimeout(() => {
-        //                             conversionInfo.innerHTML = '';
-        //                         }, 5000);
-        //                     }
-        //                     // Если статус 'pending' или 'processing', продолжаем ждать
-        //                 })
-        //                 .catch(error => {
-        //                     console.error('Error checking status:', error);
-        //                     clearInterval(checkInterval);
-        //                     button.disabled = false;
-        //                     button.textContent = getButtonText(conversionType);
-        //                     conversionInfo.innerHTML = '<span class="conversion-status status-failed">Status check failed</span>';
-
-        //                     setTimeout(() => {
-        //                         conversionInfo.innerHTML = '';
-        //                     }, 5000);
-        //                 });
-        //         }, 2000); // Проверяем каждые 2 секунды
-        //     }
-
-        //     // НОВАЯ ФУНКЦИЯ: Автоматическое скачивание
-        //     function triggerAutoDownload(downloadUrl, fileId, conversionInfo) {
-        //         // Создаем невидимый iframe для скачивания
-        //         const iframe = document.createElement('iframe');
-        //         iframe.style.display = 'none';
-        //         iframe.src = downloadUrl;
-
-        //         // Добавляем iframe на страницу
-        //         document.body.appendChild(iframe);
-
-        //         // Убираем iframe после загрузки
-        //         iframe.onload = function () {
-        //             setTimeout(() => {
-        //                 document.body.removeChild(iframe);
-
-        //                 // Обновляем сообщение после скачивания
-        //                 conversionInfo.innerHTML = `
-        //             <div class="file-status">
-        //                 <span class="conversion-status status-completed">Download completed!</span>
-        //                 <a href="${downloadUrl}" class="download-link">Download again</a>
-        //             </div>
-        //             `;
-
-        //                 // Через 10 секунд убираем сообщение
-        //                 setTimeout(() => {
-        //                     conversionInfo.innerHTML = '';
-        //                 }, 10000);
-        //             }, 1000);
-        //         };
-
-        //         // Альтернативный метод через создание ссылки (на случай если iframe не работает)
-        //         setTimeout(() => {
-        //             const link = document.createElement('a');
-        //             link.href = downloadUrl;
-        //             link.download = '';
-        //             link.style.display = 'none';
-        //             document.body.appendChild(link);
-        //             link.click();
-        //             document.body.removeChild(link);
-        //         }, 500);
-        //     }
-
-        //     // Дополнительная функция для универсального скачивания
-        //     function universalDownload(url, filename) {
-        //         // Пытаемся использовать современный API
-        //         if (typeof window.showSaveFilePicker === 'function') {
-        //             fetch(url)
-        //                 .then(response => response.blob())
-        //                 .then(blob => {
-        //                     const fileHandle = window.showSaveFilePicker({
-        //                         suggestedName: filename,
-        //                         types: [{
-        //                             description: 'Excel files',
-        //                             accept: { 'application/vnd.ms-excel': ['.xls'] },
-        //                         }],
-        //                     });
-        //                     return fileHandle.then(handle => {
-        //                         const writable = handle.createWritable();
-        //                         return writable.write(blob).then(() => writable.close());
-        //                     });
-        //                 })
-        //                 .catch(err => {
-        //                     console.log('Modern API failed, falling back to legacy method', err);
-        //                     legacyDownload(url);
-        //                 });
-        //         } else {
-        //             legacyDownload(url);
-        //         }
-        //     }
-
-        //     function legacyDownload(url) {
-        //         // Стандартный метод создания ссылки
-        //         const link = document.createElement('a');
-        //         link.href = url;
-        //         link.download = '';
-        //         link.target = '_blank';
-        //         document.body.appendChild(link);
-        //         link.click();
-        //         document.body.removeChild(link);
-        //     }
-
-        //     // Вспомогательные функции
-        //     function getConversionUrl(conversionType, fileId) {
-        //         const routes = {
-        //             'xlsxToXls': '/file/' + fileId + '/xlsxToXls',
-        //             'xlsToXlsx': '/file/' + fileId + '/xlsToXlsx',
-        //             'excelToOds': '/file/' + fileId + '/excelToOds',
-        //             'excelToCsv': '/file/' + fileId + '/excelToCsv',
-        //             'excelToHtml': '/file/' + fileId + '/excelToHtml',
-        //             'split': '/file/' + fileId + '/split',
-        //             'merge': '/file/' + fileId + '/merge',
-        //         };
-        //         return routes[conversionType];
-        //     }
-
-        //     function getDownloadFileName(conversionType) {
-        //         const extensions = {
-        //             'xlsxToXls': 'converted.xls',
-        //             'xlsToXlsx': 'converted.xlsx',
-        //             'excelToOds': 'converted.ods',
-        //             'excelToCsv': 'converted.csv',
-        //             'excelToHtml': 'converted.html',
-        //             'split': 'split',
-        //             'merge': 'merge',
-        //         };
-        //         return extensions[conversionType] || 'converted_file';
-        //     }
-
-        //     function getButtonText(conversionType) {
-        //         const texts = {
-        //             'xlsxToXls': 'Convert to xls',
-        //             'xlsToXlsx': 'Convert to xlsx',
-        //             'excelToOds': 'Convert to ods',
-        //             'excelToCsv': 'Convert to csv',
-        //             'excelToHtml': 'Convert to html',
-        //             'split': 'split',
-        //             'merge': 'merge',
-        //         };
-        //         return texts[conversionType];
-        //     }
-        // });
         document.addEventListener('DOMContentLoaded', function () {
             // Обработчик для всех форм конвертации (кроме merge)
             document.querySelectorAll('.conversion-form:not([data-conversion-type="merge"])').forEach(form => {
@@ -863,10 +620,10 @@
                     });
             }
 
-            // Обновленная функция проверки статуса
             function checkConversionStatus(fileId, conversionInfo, button, conversionType, form) {
                 let attempts = 0;
-                const maxAttempts = 60;
+                const maxAttempts = 120; // Увеличим до 4 минут (120 * 2000ms)
+                let lastStatus = '';
 
                 const checkInterval = setInterval(() => {
                     attempts++;
@@ -874,11 +631,19 @@
                     fetch(`/convert/check/${fileId}`)
                         .then(response => {
                             if (!response.ok) {
-                                throw new Error('Status check failed');
+                                throw new Error(`HTTP error! status: ${response.status}`);
                             }
                             return response.json();
                         })
                         .then(data => {
+                            console.log('Status check response:', data);
+
+                            if (data.error) {
+                                throw new Error(data.error);
+                            }
+
+                            lastStatus = data.status;
+
                             if (data.status === 'completed') {
                                 clearInterval(checkInterval);
                                 if (button) {
@@ -891,17 +656,28 @@
                                     form.reset();
                                 }
 
-                                conversionInfo.innerHTML = `
+                                let downloadUrl = data.file || data.output_file;
+                                if (!downloadUrl) {
+                                    console.error('No download URL provided in response:', data);
+                                    conversionInfo.innerHTML = `
                             <div class="file-status">
-                                <span class="conversion-status status-completed">Operation completed!</span>
-                                <a href="${data.file}" class="download-link">Download ${conversionType === 'merge' ? 'merged' : 'converted'} file</a>
+                                <span class="conversion-status status-completed">Operation completed but download link missing!</span>
                             </div>
                         `;
+                                } else {
+                                    conversionInfo.innerHTML = `
+                            <div class="file-status">
+                                <span class="conversion-status status-completed">Operation completed!</span>
+                                <a href="${downloadUrl}" class="download-link">Download ${conversionType === 'merge' ? 'merged' : 'converted'} file</a>
+                            </div>
+                        `;
+                                }
 
                                 // Через 10 секунд убираем сообщение об успехе
                                 setTimeout(() => {
                                     conversionInfo.innerHTML = '';
                                 }, 10000);
+
                             } else if (data.status === 'failed') {
                                 clearInterval(checkInterval);
                                 if (button) {
@@ -913,13 +689,18 @@
                                 setTimeout(() => {
                                     conversionInfo.innerHTML = '';
                                 }, 5000);
+                            } else if (data.status === 'processing') {
+                                // Обновляем статус каждые 5 проверок для уменьшения логов
+                                if (attempts % 5 === 0) {
+                                    conversionInfo.innerHTML = `<span class="conversion-status status-processing">Processing... (${attempts}/${maxAttempts})</span>`;
+                                }
                             } else if (attempts >= maxAttempts) {
                                 clearInterval(checkInterval);
                                 if (button) {
                                     button.disabled = false;
                                     button.textContent = getButtonText(conversionType);
                                 }
-                                conversionInfo.innerHTML = '<span class="conversion-status status-failed">Operation timeout</span>';
+                                conversionInfo.innerHTML = `<span class="conversion-status status-failed">Operation timeout (last status: ${lastStatus})</span>`;
 
                                 setTimeout(() => {
                                     conversionInfo.innerHTML = '';
@@ -933,15 +714,14 @@
                                 button.disabled = false;
                                 button.textContent = getButtonText(conversionType);
                             }
-                            conversionInfo.innerHTML = '<span class="conversion-status status-failed">Status check failed</span>';
+                            conversionInfo.innerHTML = `<span class="conversion-status status-failed">Status check failed: ${error.message}</span>`;
 
                             setTimeout(() => {
                                 conversionInfo.innerHTML = '';
                             }, 5000);
                         });
-                }, 2000);
+                }, 2000); // Проверяем каждые 2 секунды
             }
-
             // Вспомогательные функции (остаются без изменений)
             function getConversionUrl(conversionType, fileId) {
                 const routes = {
