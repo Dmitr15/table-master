@@ -26,7 +26,6 @@ class ConvertionJob implements ShouldQueue
     protected $typeOfConversation;
     protected $fileMetaData;
     protected $mergedFilePath;
-    //protected $fileMerge;
 
 
 
@@ -40,9 +39,7 @@ class ConvertionJob implements ShouldQueue
         $this->path = $path;
         $this->typeOfConversation = $type;
         $this->delimiter = $delimiter;
-
         $this->mergedFilePath = $mergeFilePath;
-
     }
 
     /**
@@ -81,7 +78,7 @@ class ConvertionJob implements ShouldQueue
                 break;
 
             default:
-                # code...
+                Log::info('Unknown function found!');
                 break;
         }
     }
@@ -125,6 +122,8 @@ class ConvertionJob implements ShouldQueue
                 IOFactory::createReader('Xlsx') :
                 IOFactory::createReader('Xls');
 
+            Log::info('Readers was created');
+
             // Загружаем оба файла
             $sourceSpreadsheet = $sourceReader->load($tempFilePath);
             $mergeSpreadsheet = $mergeReader->load($mergeTempFilePath);
@@ -156,47 +155,57 @@ class ConvertionJob implements ShouldQueue
                 gc_collect_cycles();
             }
 
-            // Сохраняем объединенный файл
+            // Сохраняем объединенный файл во временный файл
             $outputExtension = $sourceExtension; // Сохраняем в формате исходного файла
-
-            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_merged_' . uniqid() . '.' . $outputExtension;
-
-            $mergedStoragePath = 'merged_files/' . $outputFileName;
-
-            // Создаем директорию если не существует
-            if (!Storage::disk('local')->exists('merged_files')) {
-                Storage::disk('local')->makeDirectory('merged_files');
-            }
-
-            // Сохраняем во временный файл, затем в Storage
             $tempOutputPath = tempnam(sys_get_temp_dir(), 'merge_output_') . '.' . $outputExtension;
+
             $outputWriter = ($outputExtension === "xlsx") ?
                 IOFactory::createWriter($sourceSpreadsheet, 'Xlsx') :
                 IOFactory::createWriter($sourceSpreadsheet, 'Xls');
 
             $outputWriter->save($tempOutputPath);
 
+            // Сохраняем в storage
+            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_merged_' . uniqid() . '.' . $outputExtension;
+            $storagePath = 'converted_files/' . $outputFileName;
+
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('converted_files')) {
+                Storage::disk('local')->makeDirectory('converted_files');
+            }
+
             // Сохраняем в Storage
-            Storage::disk('local')->put($mergedStoragePath, file_get_contents($tempOutputPath));
+            Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
+
+            // Проверяем что файл сохранен в storage
+            if (!Storage::disk('local')->exists($storagePath)) {
+                Log::error('Function merge: File not saved to storage', ['path' => $storagePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function merge: File not saved to storage");
+            }
+
+            $fileSize = Storage::disk('local')->size($storagePath);
+            Log::info('Function merge: File saved to storage', [
+                'storage_path' => $storagePath,
+                'file_size' => $fileSize
+            ]);
 
             // Обновляем статус
             $this->fileMetaData->update([
                 "status" => "completed",
-                "output_path" => $mergedStoragePath // Сохраняем относительный путь
+                "output_path" => $storagePath // Сохраняем относительный путь
             ]);
 
             Log::info('Merge: Operation completed successfully', [
                 'merged_file_name' => $outputFileName,
-                'output_path' => $mergedStoragePath
+                'output_path' => $storagePath,
+                'total_sheets' => $sourceSpreadsheet->getSheetCount()
             ]);
 
             // Освобождаем память
             $sourceSpreadsheet->disconnectWorksheets();
             $mergeSpreadsheet->disconnectWorksheets();
             unset($sourceSpreadsheet, $mergeSpreadsheet);
-
-            // Удаляем временный выходной файл
-            $this->safeUnlink($tempOutputPath);
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
@@ -208,9 +217,16 @@ class ConvertionJob implements ShouldQueue
             if (isset($mergeTempFilePath)) {
                 $this->safeUnlink($mergeTempFilePath);
             }
+            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
+                $this->safeUnlink($tempOutputPath);
+            }
+
+            // Удаляем временный merge файл из storage (если он был загружен)
+            if (!empty($this->mergedFilePath) && Storage::disk('local')->exists($this->mergedFilePath)) {
+                Storage::disk('local')->delete($this->mergedFilePath);
+            }
         }
     }
-
 
     /**
      * Генерирует уникальное имя для листа, чтобы избежать конфликтов
@@ -232,7 +248,6 @@ class ConvertionJob implements ShouldQueue
         return $name;
     }
 
-
     private function split(): void
     {
         $fileContent = Storage::disk('local')->get($this->path);
@@ -243,11 +258,6 @@ class ConvertionJob implements ShouldQueue
         Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
 
         try {
-            $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR .
-                pathinfo($this->original_name, PATHINFO_FILENAME) . '_split.zip';
-            $zip = new \ZipArchive();
-            Log::info("print after zip creation");
-
             $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
             $reader = ($fileExtension === "xlsx") ?
                 IOFactory::createReader('Xlsx') :
@@ -255,78 +265,115 @@ class ConvertionJob implements ShouldQueue
 
             $sourceSpreadsheet = $reader->load($tempFilePath);
 
-            if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-                $tempSheets = [];
+            // Создаем временный ZIP файл
+            $zipTempPath = tempnam(sys_get_temp_dir(), 'split_zip_') . '.zip';
+            $zip = new \ZipArchive();
+
+            if ($zip->open($zipTempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+                $tempSheetFiles = [];
+
                 foreach ($sourceSpreadsheet->getAllSheets() as $sheet) {
-                    // Создаем новый Excel документ (отдельный файл для листа)
+                    // Создаем новый Excel документ для каждого листа
                     $newSpreadsheetForSheet = new Spreadsheet();
                     $newSpreadsheetForSheet->removeSheetByIndex(0);
 
-                    // Создаем пустой лист, связанный с новым Spreadsheet
                     $newSheet = new Worksheet($newSpreadsheetForSheet, $sheet->getTitle());
                     $newSpreadsheetForSheet->addSheet($newSheet);
 
-                    // Копируем содержимое и структуры (мерджи, размеры, стили) через существующие методы
+                    // Копируем содержимое и структуры
                     try {
                         $this->copyMergedCells($sheet, $newSheet);
                         $this->copyDimensions($sheet, $newSheet);
-                        // Копирование ячеек и стилей (оптимизированный метод уже в классе)
                         $this->copyCellsWithArrayStyles($sheet, $newSheet);
                     } catch (\Exception $e) {
                         Log::warning('Split: warning while copying sheet content: ' . $e->getMessage(), ['sheet' => $sheet->getTitle()]);
                     }
 
-                    // Формируем безопасный путь для временного файла листа
+                    // Сохраняем лист во временный файл
                     $sheetName = $this->sanitizeFilename($sheet->getTitle());
-                    $uniqueId = uniqid();
-                    $tempSheetPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '_' . $uniqueId . '.' . $fileExtension;
+                    $tempSheetPath = tempnam(sys_get_temp_dir(), 'split_sheet_') . '.' . $fileExtension;
 
-                    // Создаем писатель и сохраняем файл
                     $writer = ($fileExtension === "xlsx") ?
                         IOFactory::createWriter($newSpreadsheetForSheet, 'Xlsx') :
                         IOFactory::createWriter($newSpreadsheetForSheet, 'Xls');
 
                     $writer->save($tempSheetPath);
 
-                    // Добавляем файл в ZIP с корректным расширением
-                    $added = $zip->addFile($tempSheetPath, $sheetName . '.' . $fileExtension);
-                    if ($added === false) {
-                        Log::warning('Split: failed to add file to zip', ['file' => $tempSheetPath, 'zip' => $zipFilePath]);
-                    } else {
-                        $tempSheets[] = $tempSheetPath;
-                    }
+                    // Добавляем файл в ZIP
+                    $zip->addFile($tempSheetPath, $sheetName . '.' . $fileExtension);
+                    $tempSheetFiles[] = $tempSheetPath;
 
                     // Освобождаем память
                     $newSpreadsheetForSheet->disconnectWorksheets();
                     unset($newSpreadsheetForSheet, $newSheet);
+
+                    gc_collect_cycles();
                 }
+
                 $zip->close();
-            }
 
-            foreach ($tempSheets as $tmp) {
-                $this->safeUnlink($tmp);
-            }
-
-            if (!file_exists($zipFilePath)) {
-                Log::error('Function split: Output file does not exist', ['path' => $zipFilePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function split: Output file was not created");
+                // Удаляем временные файлы листов
+                foreach ($tempSheetFiles as $tempSheetFile) {
+                    $this->safeUnlink($tempSheetFile);
+                }
             } else {
-                $this->fileMetaData->update(["status" => "completed"]);
+                throw new \Exception("Cannot create ZIP archive for split operation");
             }
 
-            $this->fileMetaData->update(["output_path" => $zipFilePath]);
+            // Сохраняем ZIP файл в storage
+            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_split.zip';
+            $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('converted_files')) {
+                Storage::disk('local')->makeDirectory('converted_files');
+            }
+
+            // Сохраняем в storage
+            Storage::disk('local')->put($storagePath, file_get_contents($zipTempPath));
+
+            // Проверяем что файл сохранен в storage
+            if (!Storage::disk('local')->exists($storagePath)) {
+                Log::error('Function split: File not saved to storage', ['path' => $storagePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function split: File not saved to storage");
+            }
+
+            $fileSize = Storage::disk('local')->size($storagePath);
+            Log::info('Function split: File saved to storage', [
+                'storage_path' => $storagePath,
+                'file_size' => $fileSize
+            ]);
+
+            // Обновляем статус
+            $this->fileMetaData->update([
+                "status" => "completed",
+                "output_path" => $storagePath
+            ]);
+
+            Log::info('Function split: Operation completed successfully', [
+                'file_id' => $this->fileMetaData->id,
+                'original_file' => $this->original_name,
+                'output_file' => $storagePath,
+                'sheet_count' => $sourceSpreadsheet->getSheetCount()
+            ]);
+
+            // Освобождаем память
+            $sourceSpreadsheet->disconnectWorksheets();
+            unset($sourceSpreadsheet);
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
             Log::error('Function split: Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
-            // Удаляем временный основной файл
+            // Удаляем временные файлы
             $this->safeUnlink($tempFilePath);
+            if (isset($zipTempPath) && file_exists($zipTempPath)) {
+                $this->safeUnlink($zipTempPath);
+            }
         }
     }
-
 
     private function ExcelToHtml(): void
     {
@@ -338,69 +385,95 @@ class ConvertionJob implements ShouldQueue
         $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
         file_put_contents($tempFilePath, $fileContent);
 
-        // Если исходный файл не xlsx – конвертируем через уже реализованную функцию
-        $extension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
-        if ($extension !== 'xlsx') {
-            $conversion = $this->xlsToXlsxAdditional(); // предполагается, что функция возвращает ['path'=>..., 'name'=>...]
-            $tempFilePath = $conversion['path'];
-            $name = $conversion['name'];
-        } else {
-            $name = $this->original_name;
+        try {
+            // Определяем расширение исходного файла
+            $extension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
+
+            // Если файл не xlsx, конвертируем его во временный xlsx файл
+            if ($extension !== 'xlsx') {
+                $conversionResult = $this->convertToXlsx($tempFilePath);
+                $tempFilePath = $conversionResult['path'];
+            }
+
+            // Создаем временную директорию для HTML-файлов
+            $tempHtmlDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('html_files_');
+            if (!mkdir($tempHtmlDir, 0755, true) && !is_dir($tempHtmlDir)) {
+                throw new \RuntimeException(sprintf('Directory "%s" was not created', $tempHtmlDir));
+            }
+
+            // Определяем число листов через Spout
+            $reader = new \OpenSpout\Reader\XLSX\Reader();
+            $reader->open($tempFilePath);
+            $sheetCount = 0;
+            foreach ($reader->getSheetIterator() as $sheet) {
+                $sheetCount++;
+            }
+            $reader->close();
+
+            // Обрабатываем файл в зависимости от количества листов
+            if ($sheetCount === 1) {
+                $outputFilePath = $this->processSingleSheetHtml($tempFilePath, $tempHtmlDir);
+            } else {
+                $outputFilePath = $this->processMultipleSheetsToZipHtml($tempFilePath, $tempHtmlDir);
+            }
+
+            // Сохраняем результат в storage
+            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) .
+                ($sheetCount === 1 ? '.html' : '_html.zip');
+            $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('converted_files')) {
+                Storage::disk('local')->makeDirectory('converted_files');
+            }
+
+            // Сохраняем в storage
+            Storage::disk('local')->put($storagePath, file_get_contents($outputFilePath));
+
+            // Проверяем что файл сохранен в storage
+            if (!Storage::disk('local')->exists($storagePath)) {
+                Log::error('Function ExcelToHtml: File not saved to storage', ['path' => $storagePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function ExcelToHtml: File not saved to storage");
+            }
+
+            $fileSize = Storage::disk('local')->size($storagePath);
+            Log::info('Function ExcelToHtml: File saved to storage', [
+                'storage_path' => $storagePath,
+                'file_size' => $fileSize
+            ]);
+
+            // Обновляем метаданные файла с результатом конвертации
+            $this->fileMetaData->update([
+                "status" => "completed",
+                "output_path" => $storagePath
+            ]);
+
+            Log::info('Function ExcelToHtml: Conversion completed successfully', [
+                'file_id' => $this->fileMetaData->id,
+                'original_file' => $this->original_name,
+                'output_file' => $storagePath,
+                'sheet_count' => $sheetCount
+            ]);
+
+        } catch (\Exception $e) {
+            $this->fileMetaData->update(["status" => "failed"]);
+            Log::error('Function ExcelToHtml: Conversion error: ' . $e->getMessage());
+            throw $e;
+        } finally {
+            // Очистка временных файлов/директорий
+            $this->safeUnlink($tempFilePath);
+            if (isset($tempHtmlDir) && is_dir($tempHtmlDir)) {
+                $this->deleteDirectory($tempHtmlDir);
+            }
+            if (isset($outputFilePath) && file_exists($outputFilePath)) {
+                $this->safeUnlink($outputFilePath);
+            }
         }
-
-        // Создаем временную директорию для HTML-файлов
-        $tempHtmlDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('html_files_');
-        if (!mkdir($tempHtmlDir, 0755, true) && !is_dir($tempHtmlDir)) {
-            throw new \RuntimeException(sprintf('Directory "%s" was not created', $tempHtmlDir));
-        }
-
-        // Определяем число листов через Spout
-        $reader = new \OpenSpout\Reader\XLSX\Reader();
-        $reader->open($tempFilePath);
-        $sheetCount = 0;
-        foreach ($reader->getSheetIterator() as $sheet) {
-            $sheetCount++;
-        }
-        $reader->close();
-
-        // Если лист один – генерируем одиночный HTML-файл, иначе ZIP-архив
-        if ($sheetCount === 1) {
-            $outputFilePath = $this->processSingleSheetHtml($tempFilePath, $name);
-        } else {
-            $outputFilePath = $this->processMultipleSheetsToZipHtml($tempFilePath, $name, $tempHtmlDir);
-        }
-
-        // Обновляем метаданные файла с результатом конвертации
-        $this->fileMetaData->update(["status" => "completed", "output_path" => $outputFilePath]);
-
-        // Очистка временных файлов/директорий
-        $this->safeUnlink($tempFilePath);
-        $this->deleteDirectory($tempHtmlDir);
     }
 
-    private function xlsToXlsxAdditional(): array
+    private function convertToXlsx(string $tempFilePath): array
     {
-        $tempDir = sys_get_temp_dir();
-        if (!is_writable($tempDir)) {
-            Log::error('Temp directory is not writable', ['path' => $tempDir]);
-            throw new \Exception("Temporary directory is not writable");
-        }
-
-        //$file = UserFile::findOrFail($id);
-        Log::info('file', ['file' => $this->original_name]);
-
-        // Получаем содержимое файла
-        $fileContent = Storage::disk('local')->get($this->path);
-
-        // Создаем временный файл
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        $correctTempPath = $tempFilePath . '.xls';
-        rename($tempFilePath, $correctTempPath);
-        $tempFilePath = $correctTempPath;
-
-        file_put_contents($tempFilePath, $fileContent);
-        Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
-
         try {
             // Настройка читателя
             $reader = IOFactory::createReader('Xls');
@@ -408,7 +481,7 @@ class ConvertionJob implements ShouldQueue
 
             $sourceSpreadsheet = $reader->load($tempFilePath);
 
-            // Создаем новый XLS документ
+            // Создаем новый XLSX документ
             $newSpreadsheet = new Spreadsheet();
             $newSpreadsheet->removeSheetByIndex(0);
 
@@ -416,7 +489,7 @@ class ConvertionJob implements ShouldQueue
                 $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
                 $newSpreadsheet->addSheet($newSheet);
 
-                $highestRow = $sourceSheet->getHighestDataRow(); // Последняя строка с данными
+                $highestRow = $sourceSheet->getHighestDataRow();
                 $highestColumn = $sourceSheet->getHighestDataColumn();
 
                 if ($highestRow == 1 && $sourceSheet->getCell('A1')->getValue() === null) {
@@ -433,11 +506,10 @@ class ConvertionJob implements ShouldQueue
                 $newSheet->fromArray($data);
             }
 
-            $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($tempFilePath, PATHINFO_FILENAME) . '.xlsx';
+            $outputFilePath = tempnam(sys_get_temp_dir(), 'converted_xlsx_') . '.xlsx';
 
             $writer = IOFactory::createWriter($newSpreadsheet, 'Xlsx');
             $writer->save($outputFilePath);
-            Log::info('XLSX file saved', ['path' => $outputFilePath, 'exists' => file_exists($outputFilePath)]);
 
             // Освобождаем память
             $sourceSpreadsheet->disconnectWorksheets();
@@ -445,35 +517,28 @@ class ConvertionJob implements ShouldQueue
             unset($sourceSpreadsheet, $newSpreadsheet);
 
             if (!file_exists($outputFilePath)) {
-                Log::error('Output file does not exist', ['path' => $outputFilePath]);
-                throw new \Exception("Output file was not created");
-            }
-
-            if (!is_readable($outputFilePath)) {
-                Log::error('Output file is not readable', ['path' => $outputFilePath, 'perms' => substr(sprintf('%o', fileperms($outputFilePath)), -4)]);
-                throw new \Exception("Output file is not readable");
+                throw new \Exception("XLSX conversion failed - output file not created");
             }
 
             return ['path' => $outputFilePath, 'name' => pathinfo($this->original_name, PATHINFO_FILENAME)];
         } catch (\Exception $e) {
-            Log::error('Conversion error: ' . $e->getMessage());
+            Log::error('XLS to XLSX conversion error: ' . $e->getMessage());
             throw $e;
-        } finally {
-            $this->safeUnlink($tempFilePath);
         }
     }
 
-
-    private function processSingleSheetHtml(string $filePath, string $name): string
+    private function processSingleSheetHtml(string $filePath, string $tempHtmlDir): string
     {
-        $outputFilePath = tempnam(sys_get_temp_dir(), 'html_') . '.html';
-        $html = $this->getHtmlHeader($name);
+        $outputFilePath = $tempHtmlDir . DIRECTORY_SEPARATOR . 'output.html';
+        $html = $this->getHtmlHeader(pathinfo($this->original_name, PATHINFO_FILENAME));
 
         $reader = new \OpenSpout\Reader\XLSX\Reader();
         $reader->open($filePath);
+
         foreach ($reader->getSheetIterator() as $sheet) {
             $html .= $this->generateSheetHtmlContent($sheet);
         }
+
         $reader->close();
         $html .= $this->getHtmlFooter();
 
@@ -481,87 +546,88 @@ class ConvertionJob implements ShouldQueue
         return $outputFilePath;
     }
 
-
-    private function processMultipleSheetsToZipHtml(string $filePath, string $name, string $tempHtmlDir): string
+    private function processMultipleSheetsToZipHtml(string $filePath, string $tempHtmlDir): string
     {
-        $zipFilePath = tempnam(sys_get_temp_dir(), 'html_zip_') . '.zip';
+        $zipFilePath = $tempHtmlDir . DIRECTORY_SEPARATOR . 'html_export.zip';
         $zip = new \ZipArchive();
+
         if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== TRUE) {
             throw new \Exception("Cannot create ZIP archive");
         }
 
         $reader = new \OpenSpout\Reader\XLSX\Reader();
         $reader->open($filePath);
+
         foreach ($reader->getSheetIterator() as $sheet) {
             $sheetName = $this->sanitizeFilename($sheet->getName());
             $htmlFilePath = $tempHtmlDir . DIRECTORY_SEPARATOR . $sheetName . '.html';
+
             $html = $this->getHtmlHeader($sheetName);
             $html .= $this->generateSheetHtmlContent($sheet);
             $html .= $this->getHtmlFooter();
+
             file_put_contents($htmlFilePath, $html);
             $zip->addFile($htmlFilePath, $sheetName . '.html');
         }
+
         $reader->close();
         $zip->close();
 
         return $zipFilePath;
     }
 
-
     private function getHtmlHeader(string $title): string
     {
         $styles = ".table-container {
-            max-width: 100%;
-            overflow-x: auto;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            font-family: DejaVu Sans;
-            color: #2d3748;
-            background: white;
-        }
-        body { font-size: 12px; }
-        caption {
-            padding: 1rem;
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #1a202c;
-            text-align: left;
-        }
-        th {
-            background-color: #4a5568;
-            color: white;
-            font-weight: 600;
-            text-align: left;
-            padding: 1rem;
-            border-right: 1px solid #e2e8f0;
-        }
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        tr:nth-of-type(even) { background-color: #f7fafc; }
-        td:first-child { border-right: 1px solid #e2e8f0; }
-        tr { transition: background-color 0.2s ease; }
-        tr:hover { background-color: #ebf8ff; }";
-
-        return "<!DOCTYPE html><html><head>\n<meta charset=\"UTF-8\">\n<style>$styles</style>\n</head><body><div class='table-container'>\n<h1>" . htmlspecialchars($title) . "</h1>\n";
+        max-width: 100%;
+        overflow-x: auto;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        font-family: Arial, sans-serif;
+        color: #2d3748;
+        background: white;
+    }
+    body { font-size: 12px; margin: 20px; }
+    caption {
+        padding: 1rem;
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #1a202c;
+        text-align: left;
+    }
+    th {
+        background-color: #4a5568;
+        color: white;
+        font-weight: 600;
+        text-align: left;
+        padding: 0.5rem;
+        border-right: 1px solid #e2e8f0;
+    }
+    td {
+        padding: 0.5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    tr:nth-of-type(even) { background-color: #f7fafc; }
+    td:first-child { border-right: 1px solid #e2e8f0; }
+    tr { transition: background-color 0.2s ease; }
+    tr:hover { background-color: #ebf8ff; }";
 
+        return "<!DOCTYPE html><html><head>\n<meta charset=\"UTF-8\">\n<title>" . htmlspecialchars($title) . "</title>\n<style>$styles</style>\n</head><body>\n<h1>" . htmlspecialchars($title) . "</h1>\n";
+    }
 
     private function getHtmlFooter(): string
     {
-        return "</div></body></html>";
+        return "</body></html>";
     }
-
 
     private function generateSheetHtmlContent($sheet): string
     {
-        $html = "<table><caption>" . htmlspecialchars($sheet->getName()) . "</caption>";
+        $html = "<div class='table-container'><table><caption>" . htmlspecialchars($sheet->getName()) . "</caption>\n<thead>";
         $isFirstRow = true;
 
         foreach ($sheet->getRowIterator() as $row) {
@@ -571,13 +637,16 @@ class ConvertionJob implements ShouldQueue
                 $html .= $isFirstRow ? "<th>$value</th>" : "<td>$value</td>";
             }
             $html .= "</tr>";
-            $isFirstRow = false;
+
+            if ($isFirstRow) {
+                $html .= "</thead><tbody>";
+                $isFirstRow = false;
+            }
         }
 
-        $html .= "</table><br>";
+        $html .= "</tbody></table></div><br>";
         return $html;
     }
-
 
     private function deleteDirectory(string $dir): void
     {
@@ -592,7 +661,7 @@ class ConvertionJob implements ShouldQueue
         @rmdir($dir);
     }
 
-    private function excelToCsv()
+    private function excelToCsv(): void
     {
         $fileContent = Storage::disk('local')->get($this->path);
         $this->fileMetaData->update(["status" => "processing"]);
@@ -603,82 +672,113 @@ class ConvertionJob implements ShouldQueue
 
         try {
             // Определяем ридер по расширению файла
-            $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
-            if ($fileExtension === 'xlsx') {
-                $reader = IOFactory::createReader('Xlsx');
-            } else {
-                $reader = IOFactory::createReader('Xls');
-            }
+            $fileExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
 
-            // Настройка читателя
+            $reader = ($fileExtension === 'xlsx') ? IOFactory::createReader('Xlsx') : IOFactory::createReader('Xls');
+
+            // Настройка читателя - читаем только данные для CSV
             $reader->setReadDataOnly(true);
-            $outputFilePath = "";
 
             // Загружаем исходный excel файл
             $sourceSpreadsheet = $reader->load($tempFilePath);
+            $storagePath = '';
+
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('converted_files')) {
+                Storage::disk('local')->makeDirectory('converted_files');
+            }
 
             if ($sourceSpreadsheet->getSheetCount() === 1) {
+                // Один лист - создаем один CSV файл
                 $sourceSheet = $sourceSpreadsheet->getSheet(0);
                 $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
 
-                $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.csv';
+                // Создаем временный CSV файл
+                $tempCsvPath = tempnam(sys_get_temp_dir(), 'csv_') . '.csv';
+                $this->convertSheetToCsv($sourceSheet, $tempCsvPath, $this->delimiter);
 
-                $this->convertSheetToCsv($sourceSheet, $outputFilePath, $this->delimiter);
+                // Сохраняем в storage
+                $outputFileName = $sheetName . '.csv';
+                $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+                Storage::disk('local')->put($storagePath, file_get_contents($tempCsvPath));
 
-                $sourceSpreadsheet->disconnectWorksheets();
-                unset($sourceSpreadsheet);
+                // Удаляем временный CSV файл
+                $this->safeUnlink($tempCsvPath);
+
             } else {
-                $zipFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($this->original_name, PATHINFO_FILENAME) . '_csv.zip';
+                // Множество листов - создаем ZIP архив
+                $zipTempPath = tempnam(sys_get_temp_dir(), 'csv_zip_') . '.zip';
                 $zip = new \ZipArchive();
 
-                if ($zip->open($zipFilePath, \ZipArchive::CREATE) === TRUE) {
+                if ($zip->open($zipTempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+                    $tempCsvFiles = [];
 
                     foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
                         $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
-                        $csvTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.csv';
+                        $csvTempPath = tempnam(sys_get_temp_dir(), 'csv_sheet_') . '.csv';
 
                         $this->convertSheetToCsv($sourceSheet, $csvTempPath, $this->delimiter);
+
+                        // Добавляем файл в ZIP
                         $zip->addFile($csvTempPath, $sheetName . '.csv');
+                        $tempCsvFiles[] = $csvTempPath;
                     }
+
                     $zip->close();
 
-                    foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
-                        $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
-                        $csvTempPath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . $sheetName . '.csv';
-                        $this->safeUnlink($csvTempPath);
+                    // Сохраняем ZIP в storage
+                    $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_csv.zip';
+                    $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+                    Storage::disk('local')->put($storagePath, file_get_contents($zipTempPath));
+
+                    // Удаляем временные CSV файлы и ZIP
+                    foreach ($tempCsvFiles as $tempCsvFile) {
+                        $this->safeUnlink($tempCsvFile);
                     }
+                    $this->safeUnlink($zipTempPath);
+                } else {
+                    throw new \Exception("Cannot create ZIP archive");
                 }
-                $sourceSpreadsheet->disconnectWorksheets();
-                unset($sourceSpreadsheet);
-
-                $outputFilePath = $zipFilePath;
             }
 
-            if (!file_exists($outputFilePath)) {
-                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
+            // Проверяем что файл сохранен в storage
+            if (empty($storagePath) || !Storage::disk('local')->exists($storagePath)) {
+                Log::error('Function excelToCsv: Output file does not exist in storage', ['path' => $storagePath]);
                 $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function excelToOds: Output file was not created");
-            } elseif (!file_exists($outputFilePath)) {
-                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function excelToOds: Output file was not created");
-            } else {
-                $this->fileMetaData->update(["status" => "completed"]);
+                throw new \Exception("Function excelToCsv: Output file was not created in storage");
             }
 
+            $fileSize = Storage::disk('local')->size($storagePath);
+            Log::info('Function excelToCsv: File saved to storage', [
+                'storage_path' => $storagePath,
+                'file_size' => $fileSize
+            ]);
 
-            $this->fileMetaData->update(["output_path" => $outputFilePath]);
+            // Обновляем статус
+            $this->fileMetaData->update([
+                "status" => "completed",
+                "output_path" => $storagePath
+            ]);
+
+            Log::info('Function excelToCsv: Conversion completed successfully', [
+                'file_id' => $this->fileMetaData->id,
+                'original_file' => $this->original_name,
+                'output_file' => $storagePath
+            ]);
+
+            // Освобождаем память
+            $sourceSpreadsheet->disconnectWorksheets();
+            unset($sourceSpreadsheet);
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
+            Log::error('Function excelToCsv: Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
-            // Удаляем временные файлы
+            // Удаляем временный исходный файл
             $this->safeUnlink($tempFilePath);
         }
     }
-
 
     private function convertSheetToCsv($sourceSheet, string $outputFilePath, string $delimiter = ','): void
     {
@@ -687,47 +787,40 @@ class ConvertionJob implements ShouldQueue
 
         // Пропускаем пустые листы
         if ($highestRow == 1 && $sourceSheet->getCell('A1')->getValue() === null) {
+            file_put_contents($outputFilePath, '');
             return;
         }
 
-        $data = $sourceSheet->rangeToArray(
-            'A1:' . $highestColumn . $highestRow,
-            null,
-            true,
-            false
-        );
         $csvFile = fopen($outputFilePath, 'w');
+        fwrite($csvFile, "\xEF\xBB\xBF"); // BOM
 
-        // Добавляем BOM для корректного отображения кириллицы в Excel
-        fwrite($csvFile, "\xEF\xBB\xBF");
-
-        // Обрабатываем первую строку (исправленная логика)
-        if (!empty($data[0])) {
-            $firstRow = $data[0];
-            for ($i = 0; $i < count($firstRow); $i++) {
-                if ($firstRow[$i] === null) {
-                    $firstRow[$i] = 0;
-                }
+        // Обрабатываем построчно для экономии памяти
+        for ($row = 1; $row <= $highestRow; $row++) {
+            $rowData = [];
+            for ($col = 'A'; $col <= $highestColumn; $col++) {
+                $cellValue = $sourceSheet->getCell($col . $row)->getValue();
+                $rowData[] = $cellValue === null ? '' : $cellValue;
             }
-            fputcsv($csvFile, $firstRow, $delimiter);
-        }
 
-        // Обрабатываем остальные строки
-        for ($i = 1; $i < count($data); $i++) {
-            fputcsv($csvFile, $data[$i], $delimiter);
+            // Проверяем, что строка не полностью пустая
+            if (
+                !empty(array_filter($rowData, function ($v) {
+                    return $v !== '';
+                }))
+            ) {
+                fputcsv($csvFile, $rowData, $delimiter);
+            }
         }
 
         fclose($csvFile);
-        Log::info('CSV file created', ['path' => $outputFilePath, 'size' => filesize($outputFilePath)]);
     }
-
 
     private function sanitizeFilename(string $filename): string
     {
         return preg_replace('/[\/:*?"<>|]/', '_', $filename);
     }
 
-    private function excelToOds()
+    private function excelToOds(): void
     {
         // Получаем содержимое файла
         $fileContent = Storage::disk('local')->get($this->path);
@@ -738,19 +831,16 @@ class ConvertionJob implements ShouldQueue
         file_put_contents($tempFilePath, $fileContent);
 
         try {
-            if (strrchr($this->path, '.') == ".xlsx") {
-                $reader = IOFactory::createReader('Xlsx');
-            } else {
-                $reader = IOFactory::createReader('Xls');
-            }
+            // Определяем ридер по расширению файла
+            $fileExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
 
-            // Настройка читателя
-            $reader->setReadDataOnly(true);
+            $reader = ($fileExtension === 'xlsx') ? IOFactory::createReader('Xlsx') : IOFactory::createReader('Xls');
 
-            // Загружаем исходный ods файл
+
+            // Загружаем исходный файл
             $sourceSpreadsheet = $reader->load($tempFilePath);
 
-            // Создаем новый документ
+            // Создаем новый ODS документ
             $newSpreadsheet = new Spreadsheet();
             $newSpreadsheet->removeSheetByIndex(0);
 
@@ -759,64 +849,89 @@ class ConvertionJob implements ShouldQueue
                 $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
                 $newSpreadsheet->addSheet($newSheet);
 
-                $highestRow = $sourceSheet->getHighestDataRow(); // Последняя строка с данными
-                $highestColumn = $sourceSheet->getHighestDataColumn();
+                // Копируем основные свойства листа
+                $this->copySheetProperties($sourceSheet, $newSheet);
 
-                if ($highestRow == 1 && $sourceSheet->getCell('A1')->getValue() === null) {
-                    continue;
-                }
+                // Копируем объединенные ячейки
+                $this->copyMergedCells($sourceSheet, $newSheet);
 
-                $data = $sourceSheet->rangeToArray(
-                    'A1:' . $highestColumn . $highestRow,
-                    null,
-                    true,
-                    false
-                );
-                $newSheet->fromArray($data);
+                // Копируем размеры столбцов и строк
+                $this->copyDimensions($sourceSheet, $newSheet);
+
+                // Копируем данные и стили
+                $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
+
+                // Освобождаем память после обработки каждого листа
+                gc_collect_cycles();
             }
 
-            $outputFilePath = pathinfo($tempFilePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($tempFilePath, PATHINFO_FILENAME) . '.ods';
+            // Создаем временный файл для конвертации
+            $tempOutputPath = tempnam(sys_get_temp_dir(), 'converted_ods_') . '.ods';
 
             $writer = IOFactory::createWriter($newSpreadsheet, 'Ods');
-            $writer->save($outputFilePath);
-            Log::info('ODS file saved', ['path' => $outputFilePath, 'exists' => file_exists($outputFilePath)]);
+            $writer->save($tempOutputPath);
+
+            Log::info('ODS file created', ['path' => $tempOutputPath, 'size' => filesize($tempOutputPath)]);
+
+            // Проверяем что временный файл создан
+            if (!file_exists($tempOutputPath)) {
+                Log::error('Function excelToOds: Temporary output file does not exist', ['path' => $tempOutputPath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function excelToOds: Temporary output file was not created");
+            }
+
+            // Сохраняем файл в storage
+            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '.ods';
+            $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('converted_files')) {
+                Storage::disk('local')->makeDirectory('converted_files');
+            }
+
+            // Сохраняем в storage
+            Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
+
+            // Проверяем что файл сохранен в storage
+            if (!Storage::disk('local')->exists($storagePath)) {
+                Log::error('Function excelToOds: File not saved to storage', ['path' => $storagePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function excelToOds: File not saved to storage");
+            }
+
+            $fileSize = Storage::disk('local')->size($storagePath);
+            Log::info('Function excelToOds: File saved to storage', [
+                'storage_path' => $storagePath,
+                'file_size' => $fileSize
+            ]);
+
+            // Обновляем статус и путь
+            $this->fileMetaData->update([
+                "status" => "completed",
+                "output_path" => $storagePath  // Сохраняем относительный путь storage
+            ]);
+
+            Log::info('Function excelToOds: Conversion completed successfully', [
+                'file_id' => $this->fileMetaData->id,
+                'original_file' => $this->original_name,
+                'output_file' => $storagePath
+            ]);
 
             // Освобождаем память
             $sourceSpreadsheet->disconnectWorksheets();
             $newSpreadsheet->disconnectWorksheets();
             unset($sourceSpreadsheet, $newSpreadsheet);
 
-            // if (!file_exists($outputFilePath)) {
-            //     Log::error('Output file does not exist', ['path' => $outputFilePath]);
-            //     throw new \Exception("Output file was not created");
-            // }
-
-            // if (!is_readable($outputFilePath)) {
-            //     Log::error('Output file is not readable', ['path' => $outputFilePath, 'perms' => substr(sprintf('%o', fileperms($outputFilePath)), -4)]);
-            //     throw new \Exception("Output file is not readable");
-            // }
-
-            if (!file_exists($outputFilePath)) {
-                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function excelToOds: Output file was not created");
-            } elseif (!file_exists($outputFilePath)) {
-                Log::error('Function excelToOds: Output file does not exist', ['path' => $outputFilePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function excelToOds: Output file was not created");
-            } else {
-                $this->fileMetaData->update(["status" => "completed"]);
-            }
-
-            $this->fileMetaData->update(["output_path" => $outputFilePath]);
-
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
+            Log::error('Function excelToOds: Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
             // Удаляем временные файлы
             $this->safeUnlink($tempFilePath);
+            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
+                $this->safeUnlink($tempOutputPath);
+            }
         }
     }
 
@@ -861,51 +976,55 @@ class ConvertionJob implements ShouldQueue
                 gc_collect_cycles();
             }
 
-            // Формируем путь для выходного файла
-            $outputFilePath = tempnam(sys_get_temp_dir(), 'converted_') . '.xlsx';
+            // Создаем временный файл для конвертации
+            $tempOutputPath = tempnam(sys_get_temp_dir(), 'converted_') . '.xlsx';
 
-            Log::info('New path', ['path' => $outputFilePath]);
+            Log::info('New path', ['path' => $tempOutputPath]);
 
             $writer = IOFactory::createWriter($newSpreadsheet, 'Xlsx');
+            $writer->save($tempOutputPath);
 
-            $writer->save($outputFilePath);
-
-            if (file_exists($outputFilePath)) {
-                $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mimeType = finfo_file($fileInfo, $outputFilePath);
-                finfo_close($fileInfo);
-
-                Log::info('File MIME type check', [
-                    'path' => $outputFilePath,
-                    'mime_type' => $mimeType,
-                    'expected' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                ]);
-
-                // if (str_contains($mimeType, 'spreadsheetml') || str_contains($mimeType, 'xlsx')) {
-                //     $this->fileMetaData->update(["status" => "completed"]);
-                //     $this->fileMetaData->update(["output_path" => $outputFilePath]);
-                //     Log::info('XLS to XLSX conversion completed successfully');
-                // } else {
-                //     $this->fileMetaData->update(["status" => "failed"]);
-                //     Log::error('Converted file is not in XLSX format', ['mime_type' => $mimeType]);
-                //     throw new \Exception("Converted file is not in XLSX format");
-                // }
+            // Проверяем что файл создан
+            if (!file_exists($tempOutputPath)) {
+                Log::error('Function xlsToXlsx: Output file does not exist', ['path' => $tempOutputPath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function xlsToXlsx: Output file was not created");
             }
+
+            // Сохраняем файл в storage
+            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '.xlsx';
+            $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('converted_files')) {
+                Storage::disk('local')->makeDirectory('converted_files');
+            }
+
+            // Сохраняем в storage
+            Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
+
+            // Проверяем что файл сохранен в storage
+            if (!Storage::disk('local')->exists($storagePath)) {
+                Log::error('Function xlsToXlsx: File not saved to storage', ['path' => $storagePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function xlsToXlsx: File not saved to storage");
+            }
+
+            // Обновляем статус и путь
+            $this->fileMetaData->update([
+                "status" => "completed",
+                "output_path" => $storagePath  // Сохраняем относительный путь storage
+            ]);
+
+            Log::info('Function xlsToXlsx: Conversion completed', [
+                'storage_path' => $storagePath,
+                'file_size' => Storage::disk('local')->size($storagePath)
+            ]);
 
             // Освобождаем память
             $sourceSpreadsheet->disconnectWorksheets();
             $newSpreadsheet->disconnectWorksheets();
             unset($sourceSpreadsheet, $newSpreadsheet);
-
-            if (!file_exists($outputFilePath)) {
-                Log::error('Function xlsToXlsx: Output file does not exist', ['path' => $outputFilePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function xlsToXlsx: Output file was not created");
-            } else {
-                $this->fileMetaData->update(["status" => "completed"]);
-            }
-
-            $this->fileMetaData->update(["output_path" => $outputFilePath]);
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
@@ -914,14 +1033,17 @@ class ConvertionJob implements ShouldQueue
         } finally {
             // Удаляем временные файлы
             $this->safeUnlink($tempFilePath);
+            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
+                $this->safeUnlink($tempOutputPath);
+            }
         }
     }
+
 
     private function xlsxToXls(): void
     {
         // Получаем содержимое файла
         $fileContent = Storage::disk('local')->get($this->path);
-
         $this->fileMetaData->update(["status" => "processing"]);
 
         // Создаем временный файл
@@ -960,34 +1082,66 @@ class ConvertionJob implements ShouldQueue
                 gc_collect_cycles();
             }
 
-            // Формируем путь для выходного файла
-            $outputFilePath = substr($tempFilePath, 0, -4) . '.xls';
+            // Создаем временный файл для конвертации
+            $tempOutputPath = tempnam(sys_get_temp_dir(), 'converted_') . '.xls';
+
+            Log::info('New path', ['path' => $tempOutputPath]);
 
             $writer = IOFactory::createWriter($newSpreadsheet, 'Xls');
-            $writer->save($outputFilePath);
-            Log::info('Function xlsxToXls: XLS file saved', ['path' => $outputFilePath, 'exists' => file_exists($outputFilePath)]);
+            $writer->save($tempOutputPath);
+
+            // Проверяем что файл создан
+            if (!file_exists($tempOutputPath)) {
+                Log::error('Function xlsxToXls: Output file does not exist', ['path' => $tempOutputPath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function xlsxToXls: Output file was not created");
+            }
+
+            // Сохраняем файл в storage
+            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '.xls';
+            $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+
+            // Создаем директорию если не существует
+            if (!Storage::disk('local')->exists('converted_files')) {
+                Storage::disk('local')->makeDirectory('converted_files');
+            }
+
+            // Сохраняем в storage
+            Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
+
+            // Проверяем что файл сохранен в storage
+            if (!Storage::disk('local')->exists($storagePath)) {
+                Log::error('Function xlsToXlsx: File not saved to storage', ['path' => $storagePath]);
+                $this->fileMetaData->update(["status" => "failed"]);
+                throw new \Exception("Function xlsToXlsx: File not saved to storage");
+            }
+
+            // Обновляем статус и путь
+            $this->fileMetaData->update([
+                "status" => "completed",
+                "output_path" => $storagePath  // Сохраняем относительный путь storage
+            ]);
+
+            Log::info('Function xlsToXlsx: Conversion completed', [
+                'storage_path' => $storagePath,
+                'file_size' => Storage::disk('local')->size($storagePath)
+            ]);
 
             // Освобождаем память
             $sourceSpreadsheet->disconnectWorksheets();
             $newSpreadsheet->disconnectWorksheets();
             unset($sourceSpreadsheet, $newSpreadsheet);
 
-            if (!file_exists($outputFilePath)) {
-                Log::error('Function xlsxToXls: Output file does not exist', ['path' => $outputFilePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function xlsxToXls: Output file was not created");
-            } else {
-                $this->fileMetaData->update(["status" => "completed"]);
-            }
-
-            $this->fileMetaData->update(["output_path" => $outputFilePath]);
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Function xlsxToXls: Conversion error: ' . $e->getMessage());
+            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
             // Удаляем временные файлы
             $this->safeUnlink($tempFilePath);
+            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
+                $this->safeUnlink($tempOutputPath);
+            }
         }
     }
 
