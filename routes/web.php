@@ -39,10 +39,10 @@ Route::middleware('auth')->controller(ProcessFileController::class)->group(funct
 
 Route::middleware('auth')->controller(DownloadController::class)->group(function () {
     //route to check conversion status in 5 sec
-    Route::get('/convert/check/{id}', 'checkStatus')->name('convert.check')->middleware('auth');
+    Route::get('/convert/check/{id}', 'checkStatus')->name('convert.check');
 
     //route to download file in browser
-    Route::get('/download/converted_file/{id}', 'downloadFile')->name('download.file')->middleware('auth');
+    Route::get('/download/converted_file/{id}', 'downloadFile')->name('download.file');
 });
 
 
