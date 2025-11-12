@@ -665,12 +665,26 @@
                             </div>
                         `;
                                 } else {
+                                    //             conversionInfo.innerHTML = `
+                                    //     <div class="file-status">
+                                    //         <span class="conversion-status status-completed">Operation completed!</span>
+                                    //         <a href="${downloadUrl}" class="download-link">Download ${conversionType === 'merge' ? 'merged' : 'converted'} file</a>
+                                    //     </div>
+                                    // `;
+                                    const link = document.createElement('a');
+                                    link.href = downloadUrl;
+                                    link.download = ''; // можно указать имя файла, например: 'converted-file.xlsx'
+                                    link.style.display = 'none';
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+
+                                    // Опционально: показать сообщение без ссылки
                                     conversionInfo.innerHTML = `
-                            <div class="file-status">
-                                <span class="conversion-status status-completed">Operation completed!</span>
-                                <a href="${downloadUrl}" class="download-link">Download ${conversionType === 'merge' ? 'merged' : 'converted'} file</a>
-                            </div>
-                        `;
+                                        <div class="file-status">
+                                            <span class="conversion-status status-completed">File downloaded successfully!</span>
+                                        </div>
+                                        `;
                                 }
 
                                 // Через 10 секунд убираем сообщение об успехе
