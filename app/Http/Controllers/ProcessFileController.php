@@ -65,6 +65,11 @@ class ProcessFileController extends Controller
 
             $file = $user->excelFiles()->findOrFail($id);
 
+            if (pathinfo($file->path, PATHINFO_EXTENSION) === 'xls') {
+                Log::info('Trying to convert xls to xls with xlsxToXls_v1');
+                return view('dashboard');
+            }
+
             Log::info('Starting XLSX to XLS conversion with array-based styling', ['file_id' => $id]);
 
             ConvertionJob::dispatch($file, $file->original_name, $file->path, "xlsxToXls");
@@ -143,6 +148,10 @@ class ProcessFileController extends Controller
 
             $file = $user->excelFiles()->findOrFail($id);
 
+            if (pathinfo($file->path, PATHINFO_EXTENSION) === 'xlsx') {
+                Log::info('Trying to convert xlsx to xlsx with xlsxToXlsx_v1');
+                return view('dashboard');
+            }
 
             Log::info('Starting XLS to XLSX conversion with array-based styling', ['file_id' => $id, '']);
 
