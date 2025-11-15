@@ -388,6 +388,28 @@
         .download-form button:hover {
             background: #005f99;
         }
+
+        .error-container {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            color: #721c24;
+            font-size: 0.875rem;
+        }
+
+        .article__row+.error-container {
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .error-container {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -442,20 +464,27 @@
                                             <button type="submit" class="action-btn">Download</button>
                                         </form>
                                     </div>
-                                    <div class="xlsxToXls">
-                                        <form class="conversion-form" data-file-id="{{$file->id}}"
-                                            data-conversion-type="xlsxToXls">
-                                            @csrf
-                                            <button type="submit" class="action-btn convert-btn">Convert to xls</button>
-                                        </form>
-                                    </div>
-                                    <div class="xlsToXlsx">
-                                        <form class="conversion-form" data-file-id="{{$file->id}}"
-                                            data-conversion-type="xlsToXlsx">
-                                            @csrf
-                                            <button type="submit" class="action-btn convert-btn">Convert to xlsx</button>
-                                        </form>
-                                    </div>
+
+                                    @php
+                                        $extension = pathinfo($file->path, PATHINFO_EXTENSION);
+                                    @endphp
+                                    @if ($extension === 'xls')
+                                        <div class="xlsToXlsx">
+                                            <form class="conversion-form" data-file-id="{{$file->id}}"
+                                                data-conversion-type="xlsToXlsx">
+                                                @csrf
+                                                <button type="submit" class="action-btn convert-btn">Convert to xlsx</button>
+                                            </form>
+                                        </div>
+                                    @else
+                                        <div class="xlsxToXls">
+                                            <form class="conversion-form" data-file-id="{{$file->id}}"
+                                                data-conversion-type="xlsxToXls">
+                                                @csrf
+                                                <button type="submit" class="action-btn convert-btn">Convert to xls</button>
+                                            </form>
+                                        </div>
+                                    @endif
                                     <div class="excelToOds">
                                         <form class="conversion-form" data-file-id="{{$file->id}}"
                                             data-conversion-type="excelToOds">
@@ -491,10 +520,28 @@
                                             <input type="file" name="merge_file" id="merge_file_{{ $file->id }}"
                                                 accept=".xls,.xlsx" required>
                                             <label for="merge_file_{{ $file->id }}">Choose file for merging</label>
+                                            @error('merge_file_' . $file->id)
+                                                <p class="error">{{ $message }}</p>
+                                            @enderror
                                         </form>
                                     </div>
                                 </div>
                             </div>
+                            @error('file_' . $file->id)
+                                <div class="error-container">
+                                    <p class="error">{{$message}}</p>
+                                </div>
+                            @enderror
+                            @error('delete_file_' . $file->id)
+                                <div class="error-container">
+                                    <p class="error">{{$message}}</p>
+                                </div>
+                            @enderror
+                            @error('download_file_' . $file->id)
+                                <div class="error-container">
+                                    <p class="error">{{$message}}</p>
+                                </div>
+                            @enderror
                         </article>
                     @endforeach
                 </main>
@@ -506,7 +553,7 @@
                         <label for="xls_file">Choose file</label>
                         <input type="file" name="xls_file" id="xls_file">
                         <p class="file-name" id="file-name">No file selected</p>
-                        @error('body')
+                        @error('xls_file')
                             <p class="error">{{$message}}</p>
                         @enderror
                     </div>
