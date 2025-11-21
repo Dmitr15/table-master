@@ -931,25 +931,37 @@ class ConvertionJob implements ShouldQueue
 
     private function xlsToXlsx(): void
     {
-        // Получаем содержимое файла
-        $fileContent = Storage::disk('local')->get($this->path);
-        $this->fileMetaData->update(["status" => "processing"]);
+        $memoryLimit = ini_get('memory_limit');
 
-        // Создаем временный файл
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
+        $tempFilePath = null;
+        $tempOutputPath = null;
 
         try {
+            // Получаем содержимое файла
+            $fileContent = Storage::disk('local')->get($this->path);
+            $this->fileMetaData->update(["status" => "processing"]);
+
+            // Создаем временный файл
+            $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+            file_put_contents($tempFilePath, $fileContent);
+
+            ini_set('memory_limit', '512M');
+
             // Настройка читателя
             $reader = IOFactory::createReader('Xls');
 
-            // Загружаем исходный XLS файл
+            // Загружаем исходный XLSX файл
             $sourceSpreadsheet = $reader->load($tempFilePath);
 
-            // Создаем новый XLSX документ
+            // Создаем новый XLS документ
             $newSpreadsheet = new Spreadsheet();
             $newSpreadsheet->removeSheetByIndex(0);
 
+            // Ограничиваем количество одновременно обрабатываемых листов для больших файлов
+            $sheetCount = $sourceSpreadsheet->getSheetCount();
+            $processedSheets = 0;
+
+            // Обрабатываем каждый лист
             foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
                 $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
                 $newSpreadsheet->addSheet($newSheet);
@@ -965,6 +977,9 @@ class ConvertionJob implements ShouldQueue
 
                 // Копируем данные и стили с использованием массового подхода
                 $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
+
+                $processedSheets++;
+                Log::info("Processed sheet {$processedSheets} of {$sheetCount}");
 
                 // Освобождаем память после обработки каждого листа
                 gc_collect_cycles();
@@ -1007,12 +1022,13 @@ class ConvertionJob implements ShouldQueue
             // Обновляем статус и путь
             $this->fileMetaData->update([
                 "status" => "completed",
-                "output_path" => $storagePath  // Сохраняем относительный путь storage
+                "output_path" => $storagePath
             ]);
 
-            Log::info('Function xlsToXlsx: Conversion completed', [
+            Log::info('Function xlsxToXls: Conversion completed successfully', [
                 'storage_path' => $storagePath,
-                'file_size' => Storage::disk('local')->size($storagePath)
+                'file_size' => Storage::disk('local')->size($storagePath),
+                'memory_usage' => memory_get_usage(true)
             ]);
 
             // Освобождаем память
@@ -1022,14 +1038,10 @@ class ConvertionJob implements ShouldQueue
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
+            Log::error('Function xlsxToXls: Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
-            // Удаляем временные файлы
-            $this->safeUnlink($tempFilePath);
-            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
-                $this->safeUnlink($tempOutputPath);
-            }
+            $this->safeCleanup($tempFilePath, $tempOutputPath);
         }
     }
 
