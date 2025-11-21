@@ -4,583 +4,1048 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
-    <title>Разделение таблиц - Table Master</title>
-    
+
+    <title>Разделение - Table Master</title>
+
+    <link rel="preconnect" href="https://fonts.bunny.net  ">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <style>
-        /* Базовые стили (такие же как в merger) */
+        /* Стили как в merger.blade.php */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f9fafb;
-            color: #374151;
+            background-color: #f8fafc;
+            min-height: 100vh;
         }
-        
-        .min-h-screen { min-height: 100vh; }
-        .bg-white { background-color: white; }
-        .bg-gray-50 { background-color: #f9fafb; }
-        .bg-orange-50 { background-color: #fff7ed; }
-        .bg-purple-50 { background-color: #faf5ff; }
-        .bg-orange-100 { background-color: #fed7aa; }
-        
-        .text-white { color: white; }
-        .text-gray-900 { color: #111827; }
-        .text-gray-600 { color: #4b5563; }
-        .text-gray-500 { color: #6b7280; }
-        .text-orange-600 { color: #ea580c; }
-        .text-purple-600 { color: #7c3aed; }
-        
-        .border { border-width: 1px; }
-        .border-b { border-bottom-width: 1px; }
-        .border-gray-200 { border-color: #e5e7eb; }
-        .border-gray-300 { border-color: #d1d5db; }
-        
-        .rounded-lg { border-radius: 0.5rem; }
-        .rounded-xl { border-radius: 0.75rem; }
-        
-        .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-        
-        .p-4 { padding: 1rem; }
-        .p-6 { padding: 1.5rem; }
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-        
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .mb-8 { margin-bottom: 2rem; }
-        
-        .text-sm { font-size: 0.875rem; }
-        .text-lg { font-size: 1.125rem; }
-        .text-xl { font-size: 1.25rem; }
-        .text-2xl { font-size: 1.5rem; }
-        .text-3xl { font-size: 1.875rem; }
-        
-        .font-medium { font-weight: 500; }
-        .font-semibold { font-weight: 600; }
-        .font-bold { font-weight: 700; }
-        
-        .flex { display: flex; }
-        .hidden { display: none; }
-        .grid { display: grid; }
-        .block { display: block; }
-        
-        .items-center { align-items: center; }
-        .justify-center { justify-content: center; }
-        .justify-between { justify-content: space-between; }
-        .text-center { text-align: center; }
-        .text-left { text-align: left; }
-        
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        
-        .gap-4 { gap: 1rem; }
-        .gap-6 { gap: 1.5rem; }
-        
-        .cursor-pointer { cursor: pointer; }
-        .overflow-hidden { overflow: hidden; }
-        
-        .max-w-4xl { max-width: 56rem; }
-        .max-w-7xl { max-width: 80rem; }
-        .w-full { width: 100%; }
-        .w-8 { width: 2rem; }
-        .w-10 { width: 2.5rem; }
-        .w-12 { width: 3rem; }
-        .h-8 { height: 2rem; }
-        .h-10 { height: 2.5rem; }
-        .h-12 { height: 3rem; }
-        
-        /* Кастомные классы */
-        .btn-primary {
-            background-color: #3b82f6;
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 0.875rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        
-        .btn-primary:hover {
-            background-color: #2563eb;
+
+        .header .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
         }
-        
-        .btn-warning {
-            background-color: #ea580c;
+
+        .header .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .header .logo:hover {
+            color: #e2e8f0;
+        }
+
+        .header nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .header nav a {
+            color: white;
+            text-decoration: none;
             font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 0.875rem;
+            transition: color 0.3s ease;
+            padding: 0.5rem 0;
         }
-        
-        .btn-warning:hover {
-            background-color: #c2410c;
+
+        .header nav a:hover {
+            color: #e2e8f0;
         }
-        
-        .btn-secondary {
-            background-color: #e5e7eb;
-            color: #374151;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 0.875rem;
+
+        .header nav a.active {
+            color: #e2e8f0;
+            font-weight: 600;
         }
-        
-        .btn-secondary:hover {
-            background-color: #d1d5db;
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
-        
+
+        .main-content {
+            padding: 3rem 0;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            font-size: 1.125rem;
+            color: #6b7280;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .converter-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin-bottom: 2rem;
+        }
+
         .file-upload-area {
             border: 2px dashed #d1d5db;
-            border-radius: 0.5rem;
-            transition: border-color 0.2s;
-        }
-        
-        .file-upload-area:hover {
-            border-color: #9ca3af;
-        }
-        
-        .split-option {
-            border: 2px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 1rem;
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            background: #f9fafb;
         }
-        
-        .split-option:hover {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
+
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
         }
-        
-        .split-option.active {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
+
+        .upload-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: #e0e7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
         }
-        
-        @media (min-width: 768px) {
-            .md\:flex { display: flex; }
-            .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+        .upload-icon svg {
+            width: 28px;
+            height: 28px;
+            color: #667eea;
+        }
+
+        .upload-text {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-note {
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+
+        .settings-section {
+            margin-top: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .result-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+
+        .result-icon.success {
+            background: #dcfce7;
+        }
+
+        .result-icon.processing {
+            background: #fef3c7;
+        }
+
+        .result-icon svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .result-icon.success svg {
+            color: #16a34a;
+        }
+
+        .result-icon.processing svg {
+            color: #d97706;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-text {
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .info-card.feature {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .info-card.feature .info-title {
+            color: white;
+        }
+
+        .info-card.feature .info-description {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .info-icon-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .info-card:not(.feature) .info-icon-small {
+            background: #e0e7ff;
+        }
+
+        .info-card:not(.feature) .info-icon-small svg {
+            color: #667eea;
+        }
+
+        .info-card.feature .info-icon-small {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .info-card.feature .info-icon-small svg {
+            color: white;
+        }
+
+        .info-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-description {
+            color: #6b7280;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .split-methods {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .split-method {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .split-method:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .split-method.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+            box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.1);
+        }
+
+        .method-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: #e0e7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        .split-method.active .method-icon {
+            background: #667eea;
+        }
+
+        .split-method.active .method-icon svg {
+            color: white;
+        }
+
+        .method-icon svg {
+            width: 24px;
+            height: 24px;
+            color: #667eea;
+        }
+
+        .method-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .method-description {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .split-method.active .method-title {
+            color: #667eea;
+        }
+
+        .debug-info {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            color: #374151;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .debug-toggle {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .debug-toggle:hover {
+            background: #4b5563;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
-<body class="min-h-screen bg-gray-50">
+<body>
     <!-- Навигация -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center space-x-8">
-                    <a href="{{ route('home') }}" class="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                        Table Master
-                    </a>
-                    <div class="hidden md:flex space-x-4">
-                        <a href="{{ route('home') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Главная</a>
-                        <a href="{{ route('converter') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Конвертер</a>
-                        <a href="{{ route('merger') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Слияние</a>
-                        <a href="{{ route('splitter') }}" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-md text-sm font-medium">Разделение</a>
-                        <a href="{{ route('analyzer') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Анализ</a>
-                    </div>
-                </div>
-            </div>
+    <header class="header">
+        <div class="container">
+            <a href="{{ route('home') }}" class="logo">📊 Table Master</a>
+            <nav>
+                <a href="{{ route('home') }}">Главная</a>
+                <a href="{{ route('converter') }}">Конвертер</a>
+                <a href="{{ route('merger') }}">Слияние</a>
+                <a href="{{ route('splitter') }}" class="active">Разделение</a>
+                <a href="{{ route('analyzer') }}">Анализ</a>
+            </nav>
         </div>
-    </nav>
+    </header>
 
     <!-- Основной контент -->
-    <main class="py-8">
-        <div class="max-w-4xl mx-auto px-4">
-            <!-- Заголовок -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Разделение таблиц</h1>
-                <p class="text-lg text-gray-600">Разделите большую таблицу на несколько частей</p>
+    <main class="main-content">
+        <div class="container">
+            <!-- Заголовок страницы -->
+            <div class="page-header">
+                <h1 class="page-title">Разделение файлов</h1>
+                <p class="page-subtitle">Разделите большой файл на несколько частей по выбранному критерию</p>
             </div>
 
-            <!-- Основная карточка -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-                <!-- Загрузка файла -->
-                <div class="mb-6">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">Загрузите файл для разделения</h2>
-                    <div id="fileDropZone" class="file-upload-area p-8 text-center cursor-pointer max-w-2xl mx-auto">
-                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
-                        <div id="uploadContent">
-                            <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
-                            </svg>
-                            <p class="text-lg font-medium text-gray-600 mb-2">Перетащите файл для разделения</p>
-                            <p class="text-sm text-gray-500">Поддерживаемые форматы: XLSX, XLS, CSV</p>
-                        </div>
-                        <div id="filePreview" class="hidden">
-                            <div class="flex items-center justify-center space-x-4 p-4 bg-orange-50 rounded-lg">
-                                <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                                <div class="text-left">
-                                    <p id="fileName" class="font-medium text-gray-900"></p>
-                                    <p id="fileSize" class="text-sm text-gray-500"></p>
-                                </div>
-                                <button type="button" id="removeFile" class="text-red-500 hover:text-red-700">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <!-- Основная карточка разделения -->
+            <div class="converter-card">
+                <!-- Форма разделения -->
+                <form id="splitterForm" method="POST" enctype="multipart/form-data">
+                    @csrf
+
+                    <!-- Область загрузки файла -->
+                    <div class="form-group">
+                        <label class="form-label">Файл для разделения</label>
+                        <div id="fileDropZone" data-drop-zone class="file-upload-area">
+                            <input type="file" id="fileInput" name="file" accept=".xlsx,.xls,.csv" class="hidden" required>
+                            <div id="uploadContent">
+                                <div class="upload-icon">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                                     </svg>
-                                </button>
+                                </div>
+                                <div class="upload-text">Перетащите файл сюда</div>
+                                <div class="upload-subtext">или кликните для выбора</div>
+                                <div class="upload-note">Поддерживаемые форматы: XLSX, XLS, CSV • Максимальный размер: 10MB</div>
+                            </div>
+                            <div id="filePreview" class="hidden" data-file-container>
+                                <!-- Превью файла будет добавляться сюда -->
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Методы разделения -->
-                <div id="splitMethods" class="hidden space-y-6">
-                    <h3 class="text-lg font-semibold text-gray-900">Выберите метод разделения</h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- По количеству строк -->
-                        <div class="split-option active" data-method="rows">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <!-- Методы разделения -->
+                    <div id="splitMethods" class="settings-section hidden">
+                        <h3 class="form-label">Выберите метод разделения</h3>
+                        
+                        <div class="split-methods">
+                            <!-- По листам -->
+                            <div class="split-method active" data-method="sheets">
+                                <div class="method-icon">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                    </svg>
+                                </div>
+                                <div class="method-title">По листам</div>
+                                <div class="method-description">Каждый лист в отдельный файл</div>
+                            </div>
+
+                            <!-- По количеству строк -->
+                            <div class="split-method" data-method="rows">
+                                <div class="method-icon">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
                                     </svg>
                                 </div>
-                                <div>
-                                    <h4 class="font-medium text-gray-900">По количеству строк</h4>
-                                    <p class="text-sm text-gray-600">Разделить на части по N строк</p>
+                                <div class="method-title">По строкам</div>
+                                <div class="method-description">Разделить на части по N строк</div>
+                            </div>
+                        </div>
+
+                        <!-- Настройки разделения -->
+                        <div id="splitSettings">
+                            <!-- Настройки для разделения по листам -->
+                            <div id="sheetsSettings">
+                                <div class="form-group">
+                                    <label class="form-label">Формат результата</label>
+                                    <select id="outputFormatSheets" name="format" class="form-select">
+                                        <option value="xlsx">Excel Workbook (XLSX)</option>
+                                        <option value="xls">Excel (XLS)</option>
+                                        <option value="zip">ZIP архив</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Настройки для разделения по строкам -->
+                            <div id="rowsSettings" class="hidden">
+                                <div class="form-group">
+                                    <label for="rowsPerFile" class="form-label">Количество строк в каждой части</label>
+                                    <input type="number" id="rowsPerFile" name="rows_per_file" value="100" min="1" class="form-input" placeholder="Введите количество строк">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Формат результата</label>
+                                    <select id="outputFormatRows" name="format" class="form-select">
+                                        <option value="xlsx">Excel Workbook (XLSX)</option>
+                                        <option value="xls">Excel (XLS)</option>
+                                        <option value="zip">ZIP архив</option>
+                                    </select>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    Примерное количество файлов: <span id="estimatedFiles">0</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- По столбцу -->
-                        <div class="split-option" data-method="column">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h4 class="font-medium text-gray-900">По значению столбца</h4>
-                                    <p class="text-sm text-gray-600">Разделить по уникальным значениям</p>
-                                </div>
-                            </div>
+                        <!-- Кнопка разделения -->
+                        <div class="form-group" style="text-align: right; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                            <button type="submit" class="btn-primary">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                                Начать разделение
+                            </button>
                         </div>
                     </div>
+                </form>
 
-                    <!-- Настройки разделения -->
-                    <div id="splitSettings" class="space-y-4">
-                        <!-- Настройки для разделения по строкам -->
-                        <div id="rowsSettings">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Количество строк в каждой части</label>
-                            <div class="flex items-center space-x-4">
-                                <input type="number" id="rowsPerFile" value="100" min="1" class="w-32 p-2 border border-gray-300 rounded-lg">
-                                <span class="text-sm text-gray-600">строк на файл</span>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-2">Будет создано примерно <span id="estimatedFiles">0</span> файлов</p>
-                        </div>
-
-                        <!-- Настройки для разделения по столбцу -->
-                        <div id="columnSettings" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Столбец для разделения</label>
-                            <select id="splitColumn" class="w-full p-2 border border-gray-300 rounded-lg">
-                                <option value="">Выберите столбец</option>
-                                <option value="category">Категория</option>
-                                <option value="department">Отдел</option>
-                                <option value="region">Регион</option>
-                            </select>
-                        </div>
+                <!-- Прогресс разделения -->
+                <div id="splitProgress" class="result-section hidden">
+                    <div class="result-icon processing">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
                     </div>
-
-                    <!-- Кнопка разделения -->
-                    <div class="flex justify-end">
-                        <button id="splitBtn" class="btn-warning">
-                            <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                            Разделить таблицу
-                        </button>
+                    <h3 class="result-title">Разделение в процессе...</h3>
+                    <p class="result-text" id="splitProgressText">Разделяем файл на части</p>
+                    <div class="progress-bar">
+                        <div id="splitProgressFill" class="progress-fill"></div>
                     </div>
                 </div>
 
-                <!-- Результат -->
-                <div id="splitResult" class="hidden">
-                    <div class="text-center mb-6">
-                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                <!-- Результат разделения -->
+                <div id="splitResult" class="result-section hidden">
+                    <div class="result-icon success">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <h3 class="result-title">Разделение завершено!</h3>
+                    <p class="result-text">Файл успешно разделен на части</p>
+
+                    <div id="splitDownloadSection" class="hidden">
+                        <a id="splitDownloadLink" class="btn-primary" href="#" download>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                        </div>
-                        <h3 class="text-xl font-medium text-gray-900 mb-2">Таблица разделена!</h3>
-                        <p class="text-gray-600">Создано <span id="filesCount">0</span> файлов</p>
+                            Скачать файл
+                        </a>
                     </div>
 
-                    <!-- Список созданных файлов -->
-                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
-                        <h4 class="font-medium text-gray-900 mb-3">Созданные файлы:</h4>
-                        <div class="space-y-2" id="filesList">
-                            <!-- Файлы будут добавлены здесь -->
-                        </div>
-                    </div>
-
-                    <div class="flex justify-center space-x-4">
-                        <button id="downloadAll" class="btn-primary">Скачать все (ZIP)</button>
-                        <button id="newSplit" class="btn-secondary">Новое разделение</button>
-                    </div>
+                    <button id="newSplit" class="btn-primary" style="margin-top: 1rem;">
+                        Разделить другой файл
+                    </button>
                 </div>
             </div>
 
-            <!-- Информация -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-orange-50 rounded-lg p-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-orange-900">По строкам</h4>
-                            <p class="text-sm text-orange-700">Разделение на равные части</p>
-                        </div>
+            <!-- Информационные карточки -->
+            <div class="info-cards">
+                <div class="info-card feature">
+                    <div class="info-icon-small">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                        </svg>
                     </div>
+                    <h4 class="info-title">По листам</h4>
+                    <p class="info-description">Каждый лист Excel в отдельный файл</p>
                 </div>
-                
-                <div class="bg-purple-50 rounded-lg p-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-purple-900">По столбцам</h4>
-                            <p class="text-sm text-purple-700">Разделение по категориям</p>
-                        </div>
+
+                <div class="info-card">
+                    <div class="info-icon-small">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                        </svg>
                     </div>
+                    <h4 class="info-title">По строкам</h4>
+                    <p class="info-description">Разделение на равные части</p>
                 </div>
-                
-                <div class="bg-blue-50 rounded-lg p-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-blue-900">Гибкая настройка</h4>
-                            <p class="text-sm text-blue-700">Различные методы разделения</p>
-                        </div>
+
+                <div class="info-card">
+                    <div class="info-icon-small">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
                     </div>
+                    <h4 class="info-title">Гибкая настройка</h4>
+                    <p class="info-description">Различные методы разделения</p>
                 </div>
             </div>
         </div>
     </main>
 
-    <script>
-        class TableSplitter {
-            constructor() {
-                this.currentFile = null;
-                this.currentMethod = 'rows';
-                this.init();
-            }
-
-            init() {
-                this.setupEventListeners();
-            }
-
-            setupEventListeners() {
-                const fileDropZone = document.getElementById('fileDropZone');
-                const fileInput = document.getElementById('fileInput');
-                const removeFileBtn = document.getElementById('removeFile');
-                const splitOptions = document.querySelectorAll('.split-option');
-                const splitBtn = document.getElementById('splitBtn');
-                const newSplitBtn = document.getElementById('newSplit');
-
-                // Загрузка файла
-                fileDropZone.addEventListener('click', () => fileInput.click());
-                fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files[0]));
-
-                // Drag & Drop
-                fileDropZone.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    fileDropZone.style.borderColor = '#3b82f6';
-                    fileDropZone.style.backgroundColor = '#eff6ff';
-                });
-
-                fileDropZone.addEventListener('dragleave', () => {
-                    fileDropZone.style.borderColor = '#d1d5db';
-                    fileDropZone.style.backgroundColor = '';
-                });
-
-                fileDropZone.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    fileDropZone.style.borderColor = '#d1d5db';
-                    fileDropZone.style.backgroundColor = '';
-                    if (e.dataTransfer.files.length > 0) {
-                        this.handleFileSelect(e.dataTransfer.files[0]);
-                    }
-                });
-
-                removeFileBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.removeFile();
-                });
-
-                // Выбор метода разделения
-                splitOptions.forEach(option => {
-                    option.addEventListener('click', () => {
-                        splitOptions.forEach(opt => opt.classList.remove('active'));
-                        option.classList.add('active');
-                        this.currentMethod = option.dataset.method;
-                        this.toggleMethodSettings();
-                    });
-                });
-
-                // Кнопка разделения
-                splitBtn.addEventListener('click', () => {
-                    this.splitTable();
-                });
-
-                // Новое разделение
-                newSplitBtn.addEventListener('click', () => {
-                    this.resetSplitter();
-                });
-
-                // Расчет количества файлов
-                document.getElementById('rowsPerFile').addEventListener('input', () => {
-                    this.updateEstimatedFiles();
-                });
-            }
-
-            handleFileSelect(file) {
-                if (!file) return;
-
-                const isValidType = file.name.endsWith('.xlsx') || 
-                    file.name.endsWith('.xls') ||
-                    file.name.endsWith('.csv');
-
-                if (!isValidType) {
-                    alert('ОШИБКА: Неподдерживаемый формат файла');
-                    return;
-                }
-
-                this.currentFile = file;
-                this.displayFileInfo(file);
-                document.getElementById('splitMethods').classList.remove('hidden');
-                this.updateEstimatedFiles();
-            }
-
-            displayFileInfo(file) {
-                document.getElementById('fileName').textContent = file.name;
-                document.getElementById('fileSize').textContent = this.formatFileSize(file.size);
-                document.getElementById('uploadContent').classList.add('hidden');
-                document.getElementById('filePreview').classList.remove('hidden');
-            }
-
-            formatFileSize(bytes) {
-                if (bytes === 0) return '0 Bytes';
-                const k = 1024;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-            }
-
-            toggleMethodSettings() {
-                const rowsSettings = document.getElementById('rowsSettings');
-                const columnSettings = document.getElementById('columnSettings');
-
-                if (this.currentMethod === 'rows') {
-                    rowsSettings.classList.remove('hidden');
-                    columnSettings.classList.add('hidden');
-                } else {
-                    rowsSettings.classList.add('hidden');
-                    columnSettings.classList.remove('hidden');
-                }
-            }
-
-            updateEstimatedFiles() {
-                // Демо-расчет: предполагаем, что в файле 1000 строк
-                const rowsPerFile = parseInt(document.getElementById('rowsPerFile').value) || 100;
-                const estimatedFiles = Math.ceil(1000 / rowsPerFile);
-                document.getElementById('estimatedFiles').textContent = estimatedFiles;
-            }
-
-            splitTable() {
-                const splitBtn = document.getElementById('splitBtn');
-                const originalText = splitBtn.innerHTML;
-                splitBtn.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>';
-                splitBtn.disabled = true;
-
-                // Имитация процесса разделения
-                setTimeout(() => {
-                    document.getElementById('splitMethods').classList.add('hidden');
-                    document.getElementById('splitResult').classList.remove('hidden');
-                    this.generateFileList();
-                    
-                    splitBtn.innerHTML = originalText;
-                    splitBtn.disabled = false;
-                }, 2000);
-            }
-
-            generateFileList() {
-                const filesList = document.getElementById('filesList');
-                const filesCount = document.getElementById('filesCount');
-                const estimatedFiles = document.getElementById('estimatedFiles').textContent;
-
-                filesList.innerHTML = '';
-                filesCount.textContent = estimatedFiles;
-
-                for (let i = 1; i <= estimatedFiles; i++) {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'flex items-center justify-between p-2 bg-white rounded border';
-                    fileItem.innerHTML = `
-                        <div class="flex items-center space-x-3">
-                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <span class="text-sm text-gray-900">part_${i}.xlsx</span>
-                        </div>
-                        <button class="text-blue-600 hover:text-blue-800 text-sm">Скачать</button>
-                    `;
-                    filesList.appendChild(fileItem);
-                }
-            }
-
-            removeFile() {
-                this.currentFile = null;
-                document.getElementById('fileInput').value = '';
-                document.getElementById('uploadContent').classList.remove('hidden');
-                document.getElementById('filePreview').classList.add('hidden');
-                document.getElementById('splitMethods').classList.add('hidden');
-                document.getElementById('splitResult').classList.add('hidden');
-            }
-
-            resetSplitter() {
-                this.removeFile();
-                document.querySelectorAll('.split-option').forEach((opt, index) => {
-                    if (index === 0) {
-                        opt.classList.add('active');
-                    } else {
-                        opt.classList.remove('active');
-                    }
-                });
-                this.currentMethod = 'rows';
-                this.toggleMethodSettings();
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            window.tableSplitter = new TableSplitter();
-        });
-    </script>
+    <!-- Контейнер для уведомлений -->
+    <div id="notification-container"></div>
 </body>
 </html>
+
+<script>
+// Глобальные переменные для отладки
+let debugLog = [];
+
+// Функция для добавления отладочной записи
+window.addDebugLog = function(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+    debugLog.push(logEntry);
+    console.log(logEntry);
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('splitterForm');
+    const fileInput = document.getElementById('fileInput');
+    const fileDropZone = document.getElementById('fileDropZone');
+    const uploadContent = document.getElementById('uploadContent');
+    const filePreview = document.getElementById('filePreview');
+    const splitMethods = document.getElementById('splitMethods');
+    const splitResult = document.getElementById('splitResult');
+    const splitProgress = document.getElementById('splitProgress');
+    const splitDownloadSection = document.getElementById('splitDownloadSection');
+    const splitDownloadLink = document.getElementById('splitDownloadLink');
+    const newSplitBtn = document.getElementById('newSplit');
+    const splitProgressFill = document.getElementById('splitProgressFill');
+    const splitProgressText = document.getElementById('splitProgressText');
+    const splitMethodElements = document.querySelectorAll('.split-method');
+    const rowsPerFileInput = document.getElementById('rowsPerFile');
+    const estimatedFilesSpan = document.getElementById('estimatedFiles');
+
+    let currentFileId = null;
+    let statusCheckInterval = null;
+    let currentMethod = 'sheets';
+
+    addDebugLog('Страница разделения загружена', 'info');
+
+    // --- Обработка файла ---
+    fileDropZone.addEventListener('click', () => fileInput.click());
+    fileDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileDropZone.style.borderColor = '#667eea';
+        fileDropZone.style.background = '#f0f4ff';
+    });
+    fileDropZone.addEventListener('dragleave', () => {
+        fileDropZone.style.borderColor = '#d1d5db';
+        fileDropZone.style.background = '#f9fafb';
+    });
+    fileDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelection(files[0]);
+        }
+    });
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileSelection(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelection(file) {
+        addDebugLog(`Файл выбран: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`, 'info');
+
+        const allowedTypes = ['.xlsx', '.xls', '.csv'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+        if (!allowedTypes.includes(fileExtension)) {
+            const errorMsg = `Неподдерживаемый формат файла: ${fileExtension}`;
+            addDebugLog(errorMsg, 'error');
+            showNotification('Ошибка: поддерживаются только XLSX, XLS, CSV файлы', 'error');
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            const errorMsg = `Файл слишком большой: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            addDebugLog(errorMsg, 'error');
+            showNotification('Ошибка: файл слишком большой (макс. 10MB)', 'error');
+            return;
+        }
+
+        showFilePreview(file);
+        splitMethods.classList.remove('hidden');
+        updateEstimatedFiles();
+    }
+
+    function showFilePreview(file) {
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        filePreview.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 48px; height: 48px; background: #667eea; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <svg fill="white" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-weight: 600; color: #374151;">${file.name}</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">${fileSize} MB</div>
+                </div>
+                <button type="button" onclick="clearFileSelection()" style="margin-left: auto; background: none; border: none; color: #6b7280; cursor: pointer;">
+                    <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+        uploadContent.classList.add('hidden');
+        filePreview.classList.remove('hidden');
+    }
+
+    // --- Функции очистки ---
+    window.clearFileSelection = function() {
+        addDebugLog('Очистка выбора файла', 'info');
+        fileInput.value = '';
+        uploadContent.classList.remove('hidden');
+        filePreview.classList.add('hidden');
+        splitMethods.classList.add('hidden');
+    }
+
+    // --- Выбор метода разделения ---
+    splitMethodElements.forEach(method => {
+        method.addEventListener('click', () => {
+            splitMethodElements.forEach(m => m.classList.remove('active'));
+            method.classList.add('active');
+            currentMethod = method.dataset.method;
+            toggleMethodSettings();
+        });
+    });
+
+    function toggleMethodSettings() {
+        const sheetsSettings = document.getElementById('sheetsSettings');
+        const rowsSettings = document.getElementById('rowsSettings');
+
+        if (currentMethod === 'sheets') {
+            sheetsSettings.classList.remove('hidden');
+            rowsSettings.classList.add('hidden');
+        } else {
+            sheetsSettings.classList.add('hidden');
+            rowsSettings.classList.remove('hidden');
+            updateEstimatedFiles();
+        }
+    }
+
+    function updateEstimatedFiles() {
+        // Демо-расчет: предполагаем, что в файле 1000 строк
+        if (currentMethod === 'rows') {
+            const rowsPerFile = parseInt(rowsPerFileInput.value) || 100;
+            const estimatedFiles = Math.ceil(1000 / rowsPerFile);
+            estimatedFilesSpan.textContent = estimatedFiles;
+        } else {
+            estimatedFilesSpan.textContent = '1';
+        }
+    }
+
+    rowsPerFileInput.addEventListener('input', updateEstimatedFiles);
+
+    // --- Обработка отправки формы ---
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+
+        if (fileInput.files.length === 0) {
+            addDebugLog('Файл не выбран', 'error');
+            showNotification('Выберите файл для разделения', 'error');
+            return;
+        }
+
+        try {
+            submitButton.innerHTML = 'Отправка...';
+            submitButton.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('method', currentMethod);
+
+            if (currentMethod === 'rows') {
+                formData.append('rows_per_file', rowsPerFileInput.value);
+                formData.append('format', document.getElementById('outputFormatRows').value);
+            } else {
+                formData.append('format', document.getElementById('outputFormatSheets').value);
+            }
+
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+            addDebugLog(`Начало разделения файла методом: ${currentMethod}`, 'info');
+            addDebugLog(`Отправка запроса на: /split-file`, 'info');
+
+            const response = await fetch('/split-file', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            addDebugLog(`Ответ получен. Статус: ${response.status}`, 'info');
+
+            const contentType = response.headers.get('content-type');
+            addDebugLog(`Content-Type ответа: ${contentType}`, 'info');
+
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                addDebugLog(`Некорректный Content-Type. Ответ: ${text.substring(0, 500)}`, 'error');
+                throw new Error('Сервер вернул некорректный ответ (не JSON). Проверьте отладочную информацию.');
+            }
+
+            const result = await response.json();
+            addDebugLog(`Ответ JSON: ${JSON.stringify(result)}`, 'info');
+
+            if (result.success) {
+                currentFileId = result.file_id;
+                addDebugLog(`Разделение начато. File ID: ${currentFileId}`, 'success');
+
+                splitMethods.classList.add('hidden');
+                splitProgress.classList.remove('hidden');
+                splitProgressFill.style.width = '30%';
+                splitProgressText.textContent = 'Начинаем разделение файла...';
+
+                startStatusChecking();
+            } else {
+                addDebugLog(`Ошибка разделения: ${result.message}`, 'error');
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            console.error('Split error:', error);
+            addDebugLog(`Ошибка: ${error.message}`, 'error');
+            showNotification(error.message, 'error');
+        } finally {
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+        }
+    });
+
+    // --- Проверка статуса ---
+    function startStatusChecking() {
+        let attempts = 0;
+        const maxAttempts = 60;
+
+        addDebugLog('Запуск проверки статуса разделения', 'info');
+
+        statusCheckInterval = setInterval(async () => {
+            attempts++;
+
+            if (attempts > maxAttempts) {
+                clearInterval(statusCheckInterval);
+                addDebugLog('Превышено максимальное количество попыток проверки статуса разделения', 'error');
+                showNotification('Разделение занимает слишком много времени. Попробуйте позже.', 'error');
+                splitProgress.classList.add('hidden');
+                splitMethods.classList.remove('hidden');
+                return;
+            }
+
+            addDebugLog(`Проверка статуса разделения #${attempts} для file_id: ${currentFileId}`, 'info');
+            await checkSplitStatus();
+        }, 2000);
+    }
+
+    async function checkSplitStatus() {
+        if (!currentFileId) {
+            addDebugLog('Нет currentFileId для проверки статуса разделения', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/check-status/${currentFileId}`);
+            addDebugLog(`Статус разделения проверен. Код: ${response.status}`, 'info');
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                addDebugLog(`Некорректный Content-Type при проверке статуса разделения: ${contentType}`, 'error');
+                addDebugLog(`Ответ: ${text.substring(0, 200)}`, 'error');
+                return;
+            }
+
+            const result = await response.json();
+            addDebugLog(`Статус разделения ответ: ${JSON.stringify(result)}`, 'info');
+
+            if (result.status === 'completed' && result.file) {
+                clearInterval(statusCheckInterval);
+                addDebugLog('Разделение завершено успешно', 'success');
+                splitProgress.classList.add('hidden');
+                splitResult.classList.remove('hidden');
+                splitDownloadSection.classList.remove('hidden');
+                splitDownloadLink.href = result.file;
+
+                const fileName = 'split_files.' + (result.file.split('.').pop() || 'zip');
+                splitDownloadLink.download = fileName;
+                addDebugLog(`Ссылка для скачивания разделения: ${result.file}`, 'success');
+
+                showNotification('Файл успешно разделен!', 'success');
+            } else if (result.status === 'processing') {
+                splitProgressFill.style.width = '70%';
+                splitProgressText.textContent = 'Разделяем данные...';
+                addDebugLog('Разделение в процессе...', 'info');
+            } else if (result.status === 'failed') {
+                clearInterval(statusCheckInterval);
+                addDebugLog('Разделение завершилось ошибкой', 'error');
+                throw new Error('Разделение не удалось');
+            } else {
+                splitProgressFill.style.width = '50%';
+                splitProgressText.textContent = 'Файл в очереди на разделение...';
+                addDebugLog('Статус разделения: ожидание обработки', 'info');
+            }
+        } catch (error) {
+            clearInterval(statusCheckInterval);
+            addDebugLog(`Ошибка при проверке статуса разделения: ${error.message}`, 'error');
+            showNotification('Ошибка при проверке статуса: ' + error.message, 'error');
+            splitProgress.classList.add('hidden');
+            splitMethods.classList.remove('hidden');
+        }
+    }
+
+    // --- Новое разделение ---
+    newSplitBtn.addEventListener('click', () => {
+        addDebugLog('Очистка для нового разделения', 'info');
+        fileInput.value = '';
+        uploadContent.classList.remove('hidden');
+        filePreview.classList.add('hidden');
+        splitMethods.classList.add('hidden');
+        splitResult.classList.add('hidden');
+        splitProgress.classList.add('hidden');
+        splitDownloadSection.classList.add('hidden');
+
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+            addDebugLog('Проверка статуса разделения остановлена', 'info');
+        }
+
+        currentFileId = null;
+        splitProgressFill.style.width = '0%';
+    });
+
+    // --- Функция уведомлений ---
+    function showNotification(message, type = 'info') {
+        const container = document.getElementById('notification-container');
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            ${type === 'error' ? 'background: #ef4444;' : 'background: #10b981;'}
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        `;
+        notification.textContent = message;
+        container.appendChild(notification);
+
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+
+    // --- Глобальные функции для отладки через консоль ---
+    window.getDebugLog = function() {
+        return debugLog;
+    };
+
+    window.clearDebugLog = function() {
+        debugLog = [];
+    };
+});
+</script>

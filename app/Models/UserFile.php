@@ -11,13 +11,10 @@ class UserFile extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'original_name',
-        'path'
-    ];
+    protected $fillable = ['user_id', 'original_name', 'path', 'output_path', 'status'];
 
-    // public function file(): BelongsTo
-    // {
-    //     return $this->belongsTo(User::class);
-    // }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

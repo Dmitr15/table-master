@@ -5,22 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Login</title>
+    <title>Register</title>
     <style>
-        * {
+        <style>* {
             box-sizing: border-box;
         }
 
         body {
             margin: 0;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #dcdbed, #4338ca);
+            background: linear-gradient(135deg, #dcdbed, #4c4a53);
             color: #333;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            /* padding: 20px; */
         }
 
         /* Контейнер формы */
@@ -51,6 +50,7 @@
 
         /* Поля ввода */
         input[type="email"],
+        input[type="text"],
         input[type="password"] {
             padding: 14px 16px;
             font-size: 16px;
@@ -60,6 +60,7 @@
         }
 
         input[type="email"]:focus,
+        input[type="text"]:focus,
         input[type="password"]:focus {
             outline: none;
             border-color: #4f46e5;
@@ -111,20 +112,31 @@
 </head>
 
 <body>
-
-    <form action="{{route('login')}}" method="POST">
+    <form action="{{route('register')}}" method="POST">
         @csrf
         <h2>Log in to Your Account</h2>
+
+        <label for="name">Name</label>
+        <input type="text" name="name" placeholder="Name" required value="{{old('name')}}">
+
         <label for="email">Email</label>
         <input type="email" name="email" placeholder="Email" required value="{{old('email')}}">
 
         <label for="password">Password</label>
         <input type="password" name="password" placeholder="password" required>
 
-        <button type="submit" class="btn mt-4">Log In</button>
+        <label for="password_confirmation">Confirm password</label>
+        <input type="password" name="password_confirmation" placeholder="Confirm password" required>
 
-        <a href="{{route('register')}}">Register</a>
 
+        {{-- <div>
+            <input type="checkbox" name="subscribe" id="subscribe">
+            <label for="subscribe"> Subscribe to our news</label>
+        </div> --}}
+
+        <button type="submit" class="btn mt-4">Sign up</button>
+
+        <a href="{{route('login')}}">Already have an account?</a>
         @if ($errors->any())
             <ul class="px-4 py-2 bd-red-100">
                 @foreach ($errors->all() as $error)
@@ -133,6 +145,7 @@
             </ul>
         @endif
     </form>
+
 </body>
 
 </html>

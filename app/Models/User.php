@@ -49,8 +49,8 @@ class User extends Authenticatable
     }
 
 
-    // public function excelFiles(): HasMany
-    // {
-    //     return $this->hasMany(UserFile::class);
-    // }
+    public function excelFiles(): HasMany
+    {
+        return $this->hasMany(UserFile::class);
+    }
 }
