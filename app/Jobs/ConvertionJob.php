@@ -212,18 +212,15 @@ class ConvertionJob implements ShouldQueue
             Log::error('Merge: Error: ' . $e->getMessage());
             throw $e;
         } finally {
-            // Удаляем временные файлы
-            $this->safeUnlink($tempFilePath);
-            if (isset($mergeTempFilePath)) {
-                $this->safeUnlink($mergeTempFilePath);
-            }
-            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
-                $this->safeUnlink($tempOutputPath);
-            }
+            $this->safeCleanup($tempFilePath, $mergeTempFilePath, $tempOutputPath);
 
             // Удаляем временный merge файл из storage (если он был загружен)
             if (!empty($this->mergedFilePath) && Storage::disk('local')->exists($this->mergedFilePath)) {
-                Storage::disk('local')->delete($this->mergedFilePath);
+                try {
+                    Storage::disk('local')->delete($this->mergedFilePath);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to delete merge file from storage: ' . $e->getMessage());
+                }
             }
         }
     }
