@@ -1039,18 +1039,24 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
-
     private function xlsxToXls(): void
     {
-        // Получаем содержимое файла
-        $fileContent = Storage::disk('local')->get($this->path);
-        $this->fileMetaData->update(["status" => "processing"]);
+        $memoryLimit = ini_get('memory_limit');
 
-        // Создаем временный файл
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
+        $tempFilePath = null;
+        $tempOutputPath = null;
 
         try {
+            // Получаем содержимое файла
+            $fileContent = Storage::disk('local')->get($this->path);
+            $this->fileMetaData->update(["status" => "processing"]);
+
+            // Создаем временный файл
+            $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+            file_put_contents($tempFilePath, $fileContent);
+
+            ini_set('memory_limit', '512M');
+
             // Настройка читателя
             $reader = IOFactory::createReader('Xlsx');
 
@@ -1060,6 +1066,10 @@ class ConvertionJob implements ShouldQueue
             // Создаем новый XLS документ
             $newSpreadsheet = new Spreadsheet();
             $newSpreadsheet->removeSheetByIndex(0);
+
+            // Ограничиваем количество одновременно обрабатываемых листов для больших файлов
+            $sheetCount = $sourceSpreadsheet->getSheetCount();
+            $processedSheets = 0;
 
             // Обрабатываем каждый лист
             foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
@@ -1077,6 +1087,9 @@ class ConvertionJob implements ShouldQueue
 
                 // Копируем данные и стили с использованием массового подхода
                 $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
+
+                $processedSheets++;
+                Log::info("Processed sheet {$processedSheets} of {$sheetCount}");
 
                 // Освобождаем память после обработки каждого листа
                 gc_collect_cycles();
@@ -1111,20 +1124,21 @@ class ConvertionJob implements ShouldQueue
 
             // Проверяем что файл сохранен в storage
             if (!Storage::disk('local')->exists($storagePath)) {
-                Log::error('Function xlsToXlsx: File not saved to storage', ['path' => $storagePath]);
+                Log::error('Function xlsxToXls: File not saved to storage', ['path' => $storagePath]);
                 $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function xlsToXlsx: File not saved to storage");
+                throw new \Exception("Function xlsxToXls: File not saved to storage");
             }
 
             // Обновляем статус и путь
             $this->fileMetaData->update([
                 "status" => "completed",
-                "output_path" => $storagePath  // Сохраняем относительный путь storage
+                "output_path" => $storagePath
             ]);
 
-            Log::info('Function xlsToXlsx: Conversion completed', [
+            Log::info('Function xlsxToXls: Conversion completed successfully', [
                 'storage_path' => $storagePath,
-                'file_size' => Storage::disk('local')->size($storagePath)
+                'file_size' => Storage::disk('local')->size($storagePath),
+                'memory_usage' => memory_get_usage(true)
             ]);
 
             // Освобождаем память
@@ -1134,16 +1148,28 @@ class ConvertionJob implements ShouldQueue
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Function xlsToXlsx: Conversion error: ' . $e->getMessage());
+            Log::error('Function xlsxToXls: Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
-            // Удаляем временные файлы
-            $this->safeUnlink($tempFilePath);
-            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
-                $this->safeUnlink($tempOutputPath);
+            $this->safeCleanup($tempFilePath, $tempOutputPath);
+        }
+    }
+
+    /**
+     * Безопасная очистка временных файлов без возможности ошибок
+     */
+    private function safeCleanup(?string ...$paths): void
+    {
+        foreach ($paths as $path) {
+            if ($path && file_exists($path)) {
+                try {
+                    @unlink($path);
+                } catch (\Exception $e) {
+                }
             }
         }
     }
+
 
     private function copySheetProperties($sourceSheet, $newSheet): void
     {
@@ -1198,20 +1224,23 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
-
     private function copyCellsWithArrayStyles($sourceSheet, $newSheet): void
     {
         $highestRow = $sourceSheet->getHighestDataRow();
         $highestColumn = $sourceSheet->getHighestDataColumn();
 
-        // Увеличиваем размер батча для уменьшения накладных расходов
-        $batchSize = 200; // Увеличили с 50 до 200
+        // Уменьшаем размер батча для файлов с большим количеством столбцов
+        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+        $batchSize = $highestColumnIndex > 50 ? 25 : 50; // Динамический размер батча
+
         $processedRows = 0;
 
-        // Предварительно вычисляем границы столбцов в числовом формате
-        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
-
-        Log::info('Function copyCellsWithArrayStyles: Starting optimized array-based style copying', ['rows' => $highestRow, 'columns' => $highestColumn]);
+        Log::info('Function copyCellsWithArrayStyles: Starting optimized array-based style copying', [
+            'rows' => $highestRow,
+            'columns' => $highestColumn,
+            'batch_size' => $batchSize,
+            'total_cells' => $highestRow * $highestColumnIndex
+        ]);
 
         for ($row = 1; $row <= $highestRow; $row += $batchSize) {
             $endRow = min($row + $batchSize - 1, $highestRow);
@@ -1219,65 +1248,68 @@ class ConvertionJob implements ShouldQueue
             // Обрабатываем диапазон строк
             for ($currentRow = $row; $currentRow <= $endRow; $currentRow++) {
                 $rowData = [];
-                $rowStyles = [];
 
-                // Используем числовой индекс для столбцов - значительно быстрее
+                // Используем числовой индекс для столбцов
                 for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
                     $col = Coordinate::stringFromColumnIndex($colIndex);
                     $cellCoordinate = $col . $currentRow;
 
-                    // Быстрая проверка существования ячейки через вычисляемые свойства
-                    $cellExists = $sourceSheet->getCell($cellCoordinate)->getValue() !== null
-                        || $sourceSheet->getCell($cellCoordinate)->getStyle()->getFill()->getFillType() !== null;
-
-                    if (!$cellExists) {
-                        $rowData[$col] = null;
-                        continue;
-                    }
-
                     $sourceCell = $sourceSheet->getCell($cellCoordinate);
                     $cellValue = $this->getSafeCellValue($sourceCell);
 
-                    $rowData[$col] = $cellValue;
-
-                    // Экспортируем стиль только если ячейка не пустая или имеет стиль
-                    if ($cellValue !== null || $this->hasVisibleStyle($sourceCell)) {
-                        try {
-                            $rowStyles[$col] = $sourceCell->getStyle()->exportArray();
-                        } catch (\Exception $e) {
-                            $rowStyles[$col] = [];
-                        }
+                    // Записываем только не-null значения
+                    if ($cellValue !== null) {
+                        $rowData[$col] = $cellValue;
                     }
                 }
 
                 // Массовая запись данных строки
-                if (
-                    !empty(array_filter($rowData, function ($v) {
-                        return $v !== null;
-                    }))
-                ) {
+                if (!empty($rowData)) {
                     $newSheet->fromArray([$rowData], null, 'A' . $currentRow);
                 }
 
-                // Применяем стили только если они есть
-                if (!empty($rowStyles)) {
-                    $this->applyRowStylesOptimized($newSheet, $currentRow, $rowStyles);
-                }
+                // Применяем стили построчно для экономии памяти
+                $this->applyStylesForRow($sourceSheet, $newSheet, $currentRow, $highestColumnIndex);
 
                 $processedRows++;
 
-                // Освобождаем память реже - каждые 50 строк
-                if ($processedRows % 50 === 0) {
+                // Освобождаем память чаще
+                if ($processedRows % 10 === 0) {
+                    unset($rowData);
                     gc_collect_cycles();
                 }
             }
 
-            Log::debug("Function copyCellsWithArrayStyles: Completed processing rows {$row} to {$endRow}");
+            Log::debug("Function copyCellsWithArrayStyles: Completed processing rows {$row} to {$endRow}", ['memory_usage' => memory_get_usage(true)]);
+            gc_collect_cycles();
         }
 
-        Log::info('Function copyCellsWithArrayStyles: Completed optimized array-based style copying', ['total_rows' => $processedRows]);
+        Log::info('Function copyCellsWithArrayStyles: Completed optimized array-based style copying', [
+            'total_rows' => $processedRows,
+            'memory_peak' => memory_get_peak_usage(true)
+        ]);
     }
 
+    private function applyStylesForRow($sourceSheet, $newSheet, $rowNumber, $highestColumnIndex): void
+    {
+        for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
+            $col = Coordinate::stringFromColumnIndex($colIndex);
+            $cellCoordinate = $col . $rowNumber;
+
+            $sourceCell = $sourceSheet->getCell($cellCoordinate);
+
+            if ($this->hasVisibleStyle($sourceCell)) {
+                try {
+                    $styleArray = $sourceCell->getStyle()->exportArray();
+                    $newSheet->getStyle($cellCoordinate)->applyFromArray($styleArray);
+
+                    unset($styleArray);
+                } catch (\Exception $e) {
+                    Log::warning('Apply styles error for cell ' . $cellCoordinate . ': ' . $e->getMessage());
+                }
+            }
+        }
+    }
 
     private function getSafeCellValue($cell)
     {
@@ -1299,21 +1331,36 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
-
     private function hasVisibleStyle($cell): bool
     {
-        $style = $cell->getStyle();
-        return $style->getFill()->getFillType() !== null
-            || $style->getFont()->getBold()
-            || $style->getFont()->getItalic()
-            || $style->getFont()->getSize() !== 11
-            || $style->getFont()->getName() !== 'Calibri'
-            || $style->getBorders()->getLeft()->getBorderStyle() !== 'none'
-            || $style->getBorders()->getRight()->getBorderStyle() !== 'none'
-            || $style->getBorders()->getTop()->getBorderStyle() !== 'none'
-            || $style->getBorders()->getBottom()->getBorderStyle() !== 'none';
-    }
+        try {
+            $style = $cell->getStyle();
 
+            if ($style->getFill()->getFillType() !== null) {
+                return true;
+            }
+
+            $font = $style->getFont();
+            if ($font->getBold() || $font->getItalic() || $font->getSize() !== 11 || $font->getName() !== 'Calibri') {
+                return true;
+            }
+
+            $borders = $style->getBorders();
+            if (
+                $borders->getLeft()->getBorderStyle() !== 'none' ||
+                $borders->getRight()->getBorderStyle() !== 'none' ||
+                $borders->getTop()->getBorderStyle() !== 'none' ||
+                $borders->getBottom()->getBorderStyle() !== 'none'
+            ) {
+                return true;
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            Log::warning('Error checking cell style: ' . $e->getMessage());
+            return false;
+        }
+    }
 
     private function applyRowStylesOptimized($sheet, $rowNumber, $styles): void
     {
@@ -1332,8 +1379,8 @@ class ConvertionJob implements ShouldQueue
     private function safeUnlink(string $path): void
     {
         try {
-            if (is_file($path)) { // Проверяем, что это файл, а не директория
-                if (@unlink($path)) { // Подавляем предупреждение, но проверяем результат
+            if (is_file($path)) {
+                if (@unlink($path)) {
                     Log::info("File successfully deleted: {$path}");
                 } else {
                     Log::warning("Failed to delete file: {$path}");
