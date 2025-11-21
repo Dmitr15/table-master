@@ -668,6 +668,10 @@ class ConvertionJob implements ShouldQueue
         file_put_contents($tempFilePath, $fileContent);
         Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
 
+        $tempCsvPath = null;
+        $zipTempPath = null;
+        $tempCsvFiles = [];
+
         try {
             // Определяем ридер по расширению файла
             $fileExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
@@ -700,17 +704,12 @@ class ConvertionJob implements ShouldQueue
                 $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
                 Storage::disk('local')->put($storagePath, file_get_contents($tempCsvPath));
 
-                // Удаляем временный CSV файл
-                $this->safeUnlink($tempCsvPath);
-
             } else {
                 // Множество листов - создаем ZIP архив
                 $zipTempPath = tempnam(sys_get_temp_dir(), 'csv_zip_') . '.zip';
                 $zip = new \ZipArchive();
 
                 if ($zip->open($zipTempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-                    $tempCsvFiles = [];
-
                     foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
                         $sheetName = $this->sanitizeFilename($sourceSheet->getTitle());
                         $csvTempPath = tempnam(sys_get_temp_dir(), 'csv_sheet_') . '.csv';
@@ -728,12 +727,6 @@ class ConvertionJob implements ShouldQueue
                     $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_csv.zip';
                     $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
                     Storage::disk('local')->put($storagePath, file_get_contents($zipTempPath));
-
-                    // Удаляем временные CSV файлы и ZIP
-                    foreach ($tempCsvFiles as $tempCsvFile) {
-                        $this->safeUnlink($tempCsvFile);
-                    }
-                    $this->safeUnlink($zipTempPath);
                 } else {
                     throw new \Exception("Cannot create ZIP archive");
                 }
@@ -774,7 +767,11 @@ class ConvertionJob implements ShouldQueue
             throw $e;
         } finally {
             // Удаляем временный исходный файл
-            $this->safeUnlink($tempFilePath);
+            $this->safeCleanup($tempFilePath, $tempCsvPath, $zipTempPath);
+            // Удаляем временные CSV файлы
+            foreach ($tempCsvFiles as $tempCsvFile) {
+                $this->safeCleanup($tempCsvFile);
+            }
         }
     }
 
