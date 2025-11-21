@@ -825,6 +825,8 @@ class ConvertionJob implements ShouldQueue
         $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
         file_put_contents($tempFilePath, $fileContent);
 
+        $tempOutputPath = null;
+
         try {
             // Определяем ридер по расширению файла
             $fileExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
@@ -923,10 +925,7 @@ class ConvertionJob implements ShouldQueue
             throw $e;
         } finally {
             // Удаляем временные файлы
-            $this->safeUnlink($tempFilePath);
-            if (isset($tempOutputPath) && file_exists($tempOutputPath)) {
-                $this->safeUnlink($tempOutputPath);
-            }
+            $this->safeCleanup($tempFilePath, $tempOutputPath);
         }
     }
 
