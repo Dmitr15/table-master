@@ -254,6 +254,9 @@ class ConvertionJob implements ShouldQueue
         file_put_contents($tempFilePath, $fileContent);
         Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
 
+        $zipTempPath = null;
+        $tempSheetFiles = [];
+
         try {
             $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
             $reader = ($fileExtension === "xlsx") ?
@@ -267,8 +270,6 @@ class ConvertionJob implements ShouldQueue
             $zip = new \ZipArchive();
 
             if ($zip->open($zipTempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-                $tempSheetFiles = [];
-
                 foreach ($sourceSpreadsheet->getAllSheets() as $sheet) {
                     // Создаем новый Excel документ для каждого листа
                     $newSpreadsheetForSheet = new Spreadsheet();
@@ -308,11 +309,6 @@ class ConvertionJob implements ShouldQueue
                 }
 
                 $zip->close();
-
-                // Удаляем временные файлы листов
-                foreach ($tempSheetFiles as $tempSheetFile) {
-                    $this->safeUnlink($tempSheetFile);
-                }
             } else {
                 throw new \Exception("Cannot create ZIP archive for split operation");
             }
@@ -364,10 +360,11 @@ class ConvertionJob implements ShouldQueue
             Log::error('Function split: Conversion error: ' . $e->getMessage());
             throw $e;
         } finally {
-            // Удаляем временные файлы
-            $this->safeUnlink($tempFilePath);
-            if (isset($zipTempPath) && file_exists($zipTempPath)) {
-                $this->safeUnlink($zipTempPath);
+            $this->safeCleanup($tempFilePath, $zipTempPath);
+
+            // Удаляем временные файлы листов
+            foreach ($tempSheetFiles as $tempSheetFile) {
+                $this->safeCleanup($tempSheetFile);
             }
         }
     }
