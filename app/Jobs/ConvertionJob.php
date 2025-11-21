@@ -469,6 +469,8 @@ class ConvertionJob implements ShouldQueue
 
     private function convertToXlsx(string $tempFilePath): array
     {
+        $outputFilePath = null;
+
         try {
             // Настройка читателя
             $reader = IOFactory::createReader('Xls');
@@ -517,6 +519,7 @@ class ConvertionJob implements ShouldQueue
 
             return ['path' => $outputFilePath, 'name' => pathinfo($this->original_name, PATHINFO_FILENAME)];
         } catch (\Exception $e) {
+            $this->safeCleanup($outputFilePath);
             Log::error('XLS to XLSX conversion error: ' . $e->getMessage());
             throw $e;
         }
