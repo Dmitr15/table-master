@@ -1230,14 +1230,79 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
+    // private function copyCellsWithArrayStyles($sourceSheet, $newSheet): void
+    // {
+    //     $highestRow = $sourceSheet->getHighestDataRow();
+    //     $highestColumn = $sourceSheet->getHighestDataColumn();
+
+    //     // Уменьшаем размер батча для файлов с большим количеством столбцов
+    //     $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+    //     $batchSize = $highestColumnIndex > 50 ? 25 : 50; // Динамический размер батча
+
+    //     $processedRows = 0;
+
+    //     Log::info('Function copyCellsWithArrayStyles: Starting optimized array-based style copying', [
+    //         'rows' => $highestRow,
+    //         'columns' => $highestColumn,
+    //         'batch_size' => $batchSize,
+    //         'total_cells' => $highestRow * $highestColumnIndex
+    //     ]);
+
+    //     for ($row = 1; $row <= $highestRow; $row += $batchSize) {
+    //         $endRow = min($row + $batchSize - 1, $highestRow);
+
+    //         // Обрабатываем диапазон строк
+    //         for ($currentRow = $row; $currentRow <= $endRow; $currentRow++) {
+    //             $rowData = [];
+
+    //             // Используем числовой индекс для столбцов
+    //             for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
+    //                 $col = Coordinate::stringFromColumnIndex($colIndex);
+    //                 $cellCoordinate = $col . $currentRow;
+
+    //                 $sourceCell = $sourceSheet->getCell($cellCoordinate);
+    //                 $cellValue = $this->getSafeCellValue($sourceCell);
+
+    //                 // Записываем только не-null значения
+    //                 if ($cellValue !== null) {
+    //                     $rowData[$col] = $cellValue;
+    //                 }
+    //             }
+
+    //             // Массовая запись данных строки
+    //             if (!empty($rowData)) {
+    //                 $newSheet->fromArray([$rowData], null, 'A' . $currentRow);
+    //             }
+
+    //             // Применяем стили построчно для экономии памяти
+    //             $this->applyStylesForRow($sourceSheet, $newSheet, $currentRow, $highestColumnIndex);
+
+    //             $processedRows++;
+
+    //             // Освобождаем память чаще
+    //             if ($processedRows % 10 === 0) {
+    //                 unset($rowData);
+    //                 gc_collect_cycles();
+    //             }
+    //         }
+
+    //         Log::debug("Function copyCellsWithArrayStyles: Completed processing rows {$row} to {$endRow}", ['memory_usage' => memory_get_usage(true)]);
+    //         gc_collect_cycles();
+    //     }
+
+    //     Log::info('Function copyCellsWithArrayStyles: Completed optimized array-based style copying', [
+    //         'total_rows' => $processedRows,
+    //         'memory_peak' => memory_get_peak_usage(true)
+    //     ]);
+    // }
+
     private function copyCellsWithArrayStyles($sourceSheet, $newSheet): void
     {
         $highestRow = $sourceSheet->getHighestDataRow();
         $highestColumn = $sourceSheet->getHighestDataColumn();
 
-        // Уменьшаем размер батча для файлов с большим количеством столбцов
         $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
-        $batchSize = $highestColumnIndex > 50 ? 25 : 50; // Динамический размер батча
+        $batchSize = $highestColumnIndex > 50 ? 25 : 50;
 
         $processedRows = 0;
 
@@ -1251,11 +1316,10 @@ class ConvertionJob implements ShouldQueue
         for ($row = 1; $row <= $highestRow; $row += $batchSize) {
             $endRow = min($row + $batchSize - 1, $highestRow);
 
-            // Обрабатываем диапазон строк
             for ($currentRow = $row; $currentRow <= $endRow; $currentRow++) {
-                $rowData = [];
+                // Формируем индексированный массив значений длиной highestColumnIndex
+                $rowArray = array_fill(0, $highestColumnIndex, '');
 
-                // Используем числовой индекс для столбцов
                 for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
                     $col = Coordinate::stringFromColumnIndex($colIndex);
                     $cellCoordinate = $col . $currentRow;
@@ -1263,25 +1327,19 @@ class ConvertionJob implements ShouldQueue
                     $sourceCell = $sourceSheet->getCell($cellCoordinate);
                     $cellValue = $this->getSafeCellValue($sourceCell);
 
-                    // Записываем только не-null значения
-                    if ($cellValue !== null) {
-                        $rowData[$col] = $cellValue;
-                    }
+                    // Всегда записываем значение (включая пустые строки)
+                    $rowArray[$colIndex - 1] = $cellValue === null ? '' : $cellValue;
                 }
 
-                // Массовая запись данных строки
-                if (!empty($rowData)) {
-                    $newSheet->fromArray([$rowData], null, 'A' . $currentRow);
-                }
+                // Массовая запись всей строки (включая пустые ячейки)
+                $newSheet->fromArray($rowArray, null, 'A' . $currentRow);
 
-                // Применяем стили построчно для экономии памяти
+                // Применяем стили для каждой ячейки в строке
                 $this->applyStylesForRow($sourceSheet, $newSheet, $currentRow, $highestColumnIndex);
 
                 $processedRows++;
 
-                // Освобождаем память чаще
                 if ($processedRows % 10 === 0) {
-                    unset($rowData);
                     gc_collect_cycles();
                 }
             }
@@ -1317,17 +1375,57 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
+    // private function getSafeCellValue($cell)
+    // {
+    //     try {
+    //         $value = $cell->getValue();
+
+    //         if (is_array($value)) {
+    //             return isset($value[0]) ? $value[0] : null;
+    //         }
+
+    //         if (is_object($value) && method_exists($value, '__toString')) {
+    //             return $value->__toString();
+    //         }
+
+    //         return $value;
+    //     } catch (\Exception $e) {
+    //         Log::warning("Function getSafeCellValue was finished unsuccessfully: Error getting cell value: " . $e->getMessage());
+    //         return null;
+    //     }
+    // }
+
     private function getSafeCellValue($cell)
     {
         try {
             $value = $cell->getValue();
 
+            // RichText -> plain text
+            if ($value instanceof \PhpOffice\PhpSpreadsheet\RichText\RichText) {
+                return $value->getPlainText();
+            }
+
+            // Формула: брать вычисленное значение, если возможно
+            if ($cell->isFormula()) {
+                try {
+                    $calculated = $cell->getCalculatedValue();
+                    return $calculated;
+                } catch (\Exception $e) {
+                }
+            }
+
             if (is_array($value)) {
                 return isset($value[0]) ? $value[0] : null;
             }
 
-            if (is_object($value) && method_exists($value, '__toString')) {
-                return $value->__toString();
+            if (is_object($value)) {
+                if (method_exists($value, 'getPlainText')) {
+                    return $value->getPlainText();
+                }
+                if (method_exists($value, '__toString')) {
+                    return (string) $value;
+                }
+                return null;
             }
 
             return $value;
