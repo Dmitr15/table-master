@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Csv;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Writer\Html;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
+use Illuminate\Support\Facades\Log;
 
 class ConverterController extends Controller
 {
@@ -68,7 +69,7 @@ class ConverterController extends Controller
 
     private function convertFile($filePath, $format, $options)
 {
-    \Log::info('🚀 STARTING FILE CONVERSION', [
+    Log::info('🚀 STARTING FILE CONVERSION', [
         'file_path' => $filePath,
         'target_format' => $format,
         'options' => $options,
@@ -79,7 +80,7 @@ class ConverterController extends Controller
 
     try {
         // Шаг 1: Проверка файла
-        \Log::info('📁 CHECKING FILE ACCESS', [
+        Log::info('📁 CHECKING FILE ACCESS', [
             'file_path' => $filePath,
             'exists' => file_exists($filePath),
             'size' => file_exists($filePath) ? filesize($filePath) : 'not_found',
@@ -96,7 +97,7 @@ class ConverterController extends Controller
         }
 
         // Шаг 2: Загрузка spreadsheet
-        \Log::info('📊 LOADING SPREADSHEET', [
+        Log::info('📊 LOADING SPREADSHEET', [
             'file_type' => pathinfo($filePath, PATHINFO_EXTENSION),
             'memory_usage_before' => memory_get_usage(true) / 1024 / 1024 . ' MB'
         ]);
@@ -105,7 +106,7 @@ class ConverterController extends Controller
         $spreadsheet = IOFactory::load($filePath);
         $loadTime = round(microtime(true) - $startTime, 3);
 
-        \Log::info('✅ SPREADSHEET LOADED SUCCESSFULLY', [
+        Log::info('✅ SPREADSHEET LOADED SUCCESSFULLY', [
             'load_time_seconds' => $loadTime,
             'sheet_count' => $spreadsheet->getSheetCount(),
             'sheet_names' => $spreadsheet->getSheetNames(),
@@ -114,7 +115,7 @@ class ConverterController extends Controller
 
         $worksheet = $spreadsheet->getActiveSheet();
         
-        \Log::info('📝 ACTIVE WORKSHEET INFO', [
+        Log::info('📝 ACTIVE WORKSHEET INFO', [
             'title' => $worksheet->getTitle(),
             'highest_row' => $worksheet->getHighestRow(),
             'highest_column' => $worksheet->getHighestColumn(),
