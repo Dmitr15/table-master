@@ -4,928 +4,1404 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
+
     <title>Анализ данных - Table Master</title>
-    
+
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <style>
-        /* Базовые стили */
+        /* Стили как в других страницах */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f9fafb;
-            color: #374151;
+            background-color: #f8fafc;
+            min-height: 100vh;
         }
-        
-        /* Утилиты */
-        .min-h-screen { min-height: 100vh; }
-        .bg-white { background-color: white; }
-        .bg-gray-50 { background-color: #f9fafb; }
-        .bg-blue-50 { background-color: #eff6ff; }
-        .bg-green-50 { background-color: #f0fdf4; }
-        .bg-purple-50 { background-color: #faf5ff; }
-        .bg-red-50 { background-color: #fef2f2; }
-        .bg-yellow-50 { background-color: #fefce8; }
-        .bg-blue-100 { background-color: #dbeafe; }
-        .bg-green-100 { background-color: #dcfce7; }
-        .bg-purple-100 { background-color: #e9d5ff; }
-        
-        .text-white { color: white; }
-        .text-gray-900 { color: #111827; }
-        .text-gray-700 { color: #374151; }
-        .text-gray-600 { color: #4b5563; }
-        .text-gray-500 { color: #6b7280; }
-        .text-blue-600 { color: #2563eb; }
-        .text-green-600 { color: #059669; }
-        .text-red-600 { color: #dc2626; }
-        .text-purple-600 { color: #7c3aed; }
-        .text-yellow-600 { color: #d97706; }
-        
-        .border { border-width: 1px; }
-        .border-b { border-bottom-width: 1px; }
-        .border-gray-200 { border-color: #e5e7eb; }
-        .border-gray-300 { border-color: #d1d5db; }
-        
-        .rounded { border-radius: 0.375rem; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .rounded-xl { border-radius: 0.75rem; }
-        .rounded-full { border-radius: 9999px; }
-        
-        .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
-        .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-        .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-        
-        .p-3 { padding: 0.75rem; }
-        .p-4 { padding: 1rem; }
-        .p-6 { padding: 1.5rem; }
-        .p-8 { padding: 2rem; }
-        .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-        
-        .m-0 { margin: 0; }
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .mb-8 { margin-bottom: 2rem; }
-        .mt-2 { margin-top: 0.5rem; }
-        .mt-4 { margin-top: 1rem; }
-        .mt-6 { margin-top: 1.5rem; }
-        
-        .text-sm { font-size: 0.875rem; }
-        .text-base { font-size: 1rem; }
-        .text-lg { font-size: 1.125rem; }
-        .text-xl { font-size: 1.25rem; }
-        .text-2xl { font-size: 1.5rem; }
-        .text-3xl { font-size: 1.875rem; }
-        
-        .font-medium { font-weight: 500; }
-        .font-semibold { font-weight: 600; }
-        .font-bold { font-weight: 700; }
-        
-        .flex { display: flex; }
-        .hidden { display: none; }
-        .grid { display: grid; }
-        .block { display: block; }
-        .inline-block { display: inline-block; }
-        
-        .items-center { align-items: center; }
-        .justify-center { justify-content: center; }
-        .justify-between { justify-content: space-between; }
-        .justify-end { justify-content: flex-end; }
-        .text-center { text-align: center; }
-        .text-left { text-align: left; }
-        .text-right { text-align: right; }
-        
-        .space-x-3 > * + * { margin-left: 0.75rem; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        
-        .gap-4 { gap: 1rem; }
-        .gap-6 { gap: 1.5rem; }
-        .gap-8 { gap: 2rem; }
-        
-        .cursor-pointer { cursor: pointer; }
-        .overflow-hidden { overflow: hidden; }
-        .overflow-auto { overflow: auto; }
-        .overflow-x-auto { overflow-x: auto; }
-        
-        .max-w-7xl { max-width: 80rem; }
-        .max-w-4xl { max-width: 56rem; }
-        .w-full { width: 100%; }
-        .w-8 { width: 2rem; }
-        .w-10 { width: 2.5rem; }
-        .w-12 { width: 3rem; }
-        .w-16 { width: 4rem; }
-        .h-8 { height: 2rem; }
-        .h-10 { height: 2.5rem; }
-        .h-12 { height: 3rem; }
-        .h-16 { height: 4rem; }
-        .h-64 { height: 16rem; }
-        .h-80 { height: 20rem; }
-        .h-96 { height: 24rem; }
-        
-        .max-h-96 { max-height: 24rem; }
-        
-        /* Кастомные классы */
-        .btn-primary {
-            background-color: #3b82f6;
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .header .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+            color: white;
+            transition: color 0.3s ease;
+        }
+
+        .header .logo:hover {
+            color: #e2e8f0;
+        }
+
+        .header nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .header nav a {
+            color: white;
+            text-decoration: none;
             font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
+            transition: color 0.3s ease;
+            padding: 0.5rem 0;
         }
-        
-        .btn-primary:hover {
-            background-color: #2563eb;
+
+        .header nav a:hover {
+            color: #e2e8f0;
         }
-        
-        .btn-secondary {
-            background-color: #e5e7eb;
-            color: #374151;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
+
+        .header nav a.active {
+            color: #e2e8f0;
+            font-weight: 600;
         }
-        
-        .btn-secondary:hover {
-            background-color: #d1d5db;
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
-        
-        .form-select {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            background-color: white;
+
+        .main-content {
+            padding: 3rem 0;
         }
-        
-        .form-input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            background-color: white;
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
         }
-        
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            font-size: 1.125rem;
+            color: #6b7280;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .converter-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin-bottom: 2rem;
+        }
+
         .file-upload-area {
             border: 2px dashed #d1d5db;
-            border-radius: 0.5rem;
-            transition: border-color 0.2s;
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9fafb;
         }
-        
+
         .file-upload-area:hover {
-            border-color: #9ca3af;
+            border-color: #667eea;
+            background: #f0f4ff;
         }
-        
-        .tab-active {
-            background-color: #3b82f6;
-            color: white;
+
+        .upload-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: #e0e7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
         }
-        
-        .tab-inactive {
-            background-color: #f3f4f6;
+
+        .upload-icon svg {
+            width: 28px;
+            height: 28px;
+            color: #667eea;
+        }
+
+        .upload-text {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
             color: #6b7280;
+            margin-bottom: 0.25rem;
         }
-        
-        .chart-container {
+
+        .upload-note {
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+
+        .settings-section {
+            margin-top: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
             background: white;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            font-size: 1rem;
+            transition: all 0.3s ease;
         }
-        
+
+        .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .result-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+
+        .result-icon.success {
+            background: #dcfce7;
+        }
+
+        .result-icon.processing {
+            background: #fef3c7;
+        }
+
+        .result-icon svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .result-icon.success svg {
+            color: #16a34a;
+        }
+
+        .result-icon.processing svg {
+            color: #d97706;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-text {
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Специфичные стили для анализатора */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
         .metric-card {
             background: white;
-            border-radius: 0.75rem;
+            border-radius: 16px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #667eea;
         }
-        
+
         .metric-card.income {
             border-left-color: #10b981;
         }
-        
+
         .metric-card.expenses {
             border-left-color: #ef4444;
         }
-        
+
         .metric-card.profit {
             border-left-color: #8b5cf6;
         }
-        
-        /* Анимации */
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+
+        .metric-card.trend {
+            border-left-color: #f59e0b;
         }
-        
-        .animate-spin {
-            animation: spin 1s linear infinite;
+
+        .metric-value {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
         }
-        
-        .transition-colors {
-            transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
         }
-        
-        /* Адаптивность */
-        @media (min-width: 768px) {
-            .md\:flex { display: flex; }
-            .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-            .md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+        .metric-change {
+            font-size: 0.75rem;
+            font-weight: 500;
         }
-        
-        @media (min-width: 1024px) {
-            .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+        .metric-change.positive {
+            color: #10b981;
         }
-        
-        /* Стили для графиков */
-        .chart-bar {
-            background: linear-gradient(to top, #3b82f6, #60a5fa);
-            border-radius: 2px;
+
+        .metric-change.negative {
+            color: #ef4444;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 2rem;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
             transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
         }
-        
-        .chart-bar:hover {
-            opacity: 0.8;
+
+        .tab:hover {
+            color: #374151;
         }
-        
-        .chart-legend {
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .chart-placeholder {
+            height: 300px;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
+            justify-content: center;
+            background: #f9fafb;
+            border-radius: 8px;
+            color: #6b7280;
         }
-        
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
+
+        .data-table {
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .data-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .positive-amount {
+            color: #10b981;
+            font-weight: 500;
+        }
+
+        .negative-amount {
+            color: #ef4444;
+            font-weight: 500;
+        }
+
+        .analysis-progress {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .insight-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-left: 3px solid #667eea;
+        }
+
+        .insight-card.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .insight-card.success {
+            border-left-color: #10b981;
+        }
+
+        .insight-card.danger {
+            border-left-color: #ef4444;
+        }
+
+        .insight-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .insight-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+            line-height: 1.4;
         }
     </style>
-    
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-gray-50">
+<body>
     <!-- Навигация -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center space-x-8">
-                    <a href="{{ route('home') }}" class="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                        Table Master
-                    </a>
-                    <div class="hidden md:flex space-x-4">
-                        <a href="{{ route('home') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Главная</a>
-                        <a href="{{ route('converter') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Конвертер</a>
-                        <a href="{{ route('merger') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Слияние</a>
-                        <a href="{{ route('splitter') }}" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">Разделение</a>
-                        <a href="{{ route('analyzer') }}" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-md text-sm font-medium">Анализ</a>
-                    </div>
-                </div>
-            </div>
+    <header class="header">
+        <div class="container">
+            <a href="{{ route('home') }}" class="logo">📊 Table Master</a>
+            <nav>
+                <a href="{{ route('home') }}">Главная</a>
+                <a href="{{ route('converter') }}">Конвертер</a>
+                <a href="{{ route('merger') }}">Слияние</a>
+                <a href="{{ route('splitter') }}">Разделение</a>
+                <a href="{{ route('analyzer') }}" class="active">Анализ</a>
+            </nav>
         </div>
-    </nav>
+    </header>
 
     <!-- Основной контент -->
-    <main class="py-8">
-        <div class="max-w-7xl mx-auto px-4">
-            <!-- Заголовок -->
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Анализ и визуализация данных</h1>
-                <p class="text-lg text-gray-600">Визуализируйте и анализируйте бухгалтерские данные с помощью графиков и диаграмм</p>
+    <main class="main-content">
+        <div class="container">
+            <!-- Заголовок страницы -->
+            <div class="page-header">
+                <h1 class="page-title">Анализ данных</h1>
+                <p class="page-subtitle">Анализируйте и визуализируйте данные из Excel и CSV файлов с помощью продвинутых инструментов</p>
             </div>
 
-            <!-- Загрузка файла -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- Область загрузки -->
-                    <div>
-                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Загрузите файл для анализа</h2>
-                        <div id="fileDropZone" class="file-upload-area p-8 text-center cursor-pointer mb-4">
-                            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+            <!-- Основная карточка анализа -->
+            <div class="converter-card">
+                <!-- Форма загрузки файла -->
+                <div id="uploadSection">
+                    <div class="form-group">
+                        <label class="form-label">Файл для анализа</label>
+                        <div id="fileDropZone" class="file-upload-area">
+                            <input type="file" id="fileInput" name="file" accept=".xlsx,.xls,.csv" class="hidden" required>
                             <div id="uploadContent">
-                                <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                                </svg>
-                                <p class="text-lg font-medium text-gray-600 mb-2">Перетащите файл с данными</p>
-                                <p class="text-sm text-gray-500">Поддерживаемые форматы: XLSX, XLS, CSV</p>
+                                <div class="upload-icon">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                    </svg>
+                                </div>
+                                <div class="upload-text">Перетащите файл с данными</div>
+                                <div class="upload-subtext">или кликните для выбора</div>
+                                <div class="upload-note">Поддерживаемые форматы: XLSX, XLS, CSV • Максимальный размер: 10MB</div>
                             </div>
                             <div id="filePreview" class="hidden">
-                                <div class="flex items-center justify-center space-x-4 p-4 bg-blue-50 rounded-lg">
-                                    <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    <div class="text-left">
-                                        <p id="fileName" class="font-medium text-gray-900"></p>
-                                        <p id="fileSize" class="text-sm text-gray-500"></p>
-                                    </div>
-                                    <button type="button" id="removeFile" class="text-red-500 hover:text-red-700">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
-                                </div>
+                                <!-- Превью файла будет добавляться сюда -->
                             </div>
                         </div>
-                        <button id="analyzeBtn" class="btn-primary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.875rem; display: flex; align-items: center; justify-content: center;">
-                            <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 1rem; height: 1rem;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            Анализировать данные
-                        </button>
                     </div>
 
                     <!-- Настройки анализа -->
-                    <div id="analysisSettings" class="hidden">
-                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Настройки анализа</h2>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Тип отчета</label>
-                                <select id="reportType" class="form-select">
-                                    <option value="financial">Финансовый отчет</option>
-                                    <option value="sales">Отчет по продажам</option>
-                                    <option value="expenses">Анализ расходов</option>
-                                    <option value="custom">Произвольный анализ</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Период анализа</label>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <input type="date" id="startDate" class="form-input" placeholder="Начальная дата">
-                                    <input type="date" id="endDate" class="form-input" placeholder="Конечная дата">
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <h3 class="font-medium text-gray-900 mb-3">Дополнительные опции</h3>
-                                <div class="space-y-2">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" id="showTrends" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="ml-2 text-sm text-gray-700">Показывать тренды</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" id="comparePeriods" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="ml-2 text-sm text-gray-700">Сравнение с предыдущим периодом</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" id="exportCharts" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="ml-2 text-sm text-gray-700">Экспорт графиков</span>
-                                    </label>
-                                </div>
+                    <div id="analysisSettings" class="settings-section hidden">
+                        <h3 class="form-label">Настройки анализа</h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Тип анализа</label>
+                            <select id="analysisType" class="form-select">
+                                <option value="financial">Финансовый анализ</option>
+                                <option value="sales">Анализ продаж</option>
+                                <option value="inventory">Анализ запасов</option>
+                                <option value="custom">Произвольный анализ</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Столбцы для анализа</label>
+                            <div id="columnSelection" class="space-y-2">
+                                <!-- Динамически заполнится после загрузки файла -->
                             </div>
                         </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Период анализа</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <input type="date" id="startDate" class="form-input" placeholder="Начальная дата">
+                                <input type="date" id="endDate" class="form-input" placeholder="Конечная дата">
+                            </div>
+                        </div>
+
+                        <!-- Кнопка анализа -->
+                        <div class="form-group" style="text-align: right; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                            <button id="analyzeBtn" class="btn-primary">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                Начать анализ
+                            </button>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Прогресс анализа -->
+                <div id="analysisProgress" class="result-section hidden">
+                    <div class="result-icon processing">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="result-title">Анализ в процессе...</h3>
+                    <p class="result-text" id="analysisProgressText">Анализируем данные и строим отчеты</p>
+                    <div class="progress-bar">
+                        <div id="analysisProgressFill" class="progress-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Результаты анализа -->
+                <div id="analysisResults" class="hidden">
+                    <div class="result-icon success">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="result-title">Анализ завершен!</h3>
+                    <p class="result-text">Данные успешно проанализированы</p>
+
+                    <button id="newAnalysis" class="btn-primary" style="margin-top: 1rem;">
+                        Новый анализ
+                    </button>
                 </div>
             </div>
 
-            <!-- Результаты анализа -->
-            <div id="analysisResults" class="hidden">
+            <!-- Детальные результаты (показываются после анализа) -->
+            <div id="detailedResults" class="hidden">
                 <!-- Ключевые метрики -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="metric-grid">
                     <div class="metric-card income">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">Общий доход</p>
-                                <p class="text-2xl font-bold text-green-600" id="totalIncome">₽ 0</p>
-                            </div>
-                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2" id="incomeChange">+0% с прошлого периода</p>
+                        <div class="metric-label">Общий доход</div>
+                        <div class="metric-value" id="totalIncome">₽ 0</div>
+                        <div class="metric-change positive" id="incomeChange">+0%</div>
                     </div>
                     
                     <div class="metric-card expenses">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">Общие расходы</p>
-                                <p class="text-2xl font-bold text-red-600" id="totalExpenses">₽ 0</p>
-                            </div>
-                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2" id="expensesChange">+0% с прошлого периода</p>
+                        <div class="metric-label">Общие расходы</div>
+                        <div class="metric-value" id="totalExpenses">₽ 0</div>
+                        <div class="metric-change negative" id="expensesChange">+0%</div>
                     </div>
                     
                     <div class="metric-card profit">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">Чистая прибыль</p>
-                                <p class="text-2xl font-bold text-purple-600" id="netProfit">₽ 0</p>
-                            </div>
-                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2" id="profitChange">+0% с прошлого периода</p>
+                        <div class="metric-label">Чистая прибыль</div>
+                        <div class="metric-value" id="netProfit">₽ 0</div>
+                        <div class="metric-change positive" id="profitChange">+0%</div>
+                    </div>
+                    
+                    <div class="metric-card trend">
+                        <div class="metric-label">Темп роста</div>
+                        <div class="metric-value" id="growthRate">0%</div>
+                        <div class="metric-change positive" id="growthTrend">Стабильный</div>
                     </div>
                 </div>
 
-                <!-- Вкладки с графиками -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-                    <div class="border-b border-gray-200">
-                        <div class="flex overflow-x-auto">
-                            <button class="tab-btn tab-active px-6 py-4 font-medium" data-tab="overview">
-                                Обзор
-                            </button>
-                            <button class="tab-btn tab-inactive px-6 py-4 font-medium" data-tab="trends">
-                                Тренды
-                            </button>
-                            <button class="tab-btn tab-inactive px-6 py-4 font-medium" data-tab="categories">
-                                Категории
-                            </button>
-                            <button class="tab-btn tab-inactive px-6 py-4 font-medium" data-tab="comparison">
-                                Сравнение
-                            </button>
-                        </div>
+                <!-- Инсайты -->
+                <div class="insights-grid">
+                    <div class="insight-card success">
+                        <div class="insight-title">📈 Положительная динамика</div>
+                        <div class="insight-text" id="positiveInsight">Загрузите данные для получения инсайтов</div>
                     </div>
+                    
+                    <div class="insight-card warning">
+                        <div class="insight-title">⚠️ Внимание</div>
+                        <div class="insight-text" id="warningInsight">Загрузите данные для получения предупреждений</div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <div class="insight-title">💡 Рекомендация</div>
+                        <div class="insight-text" id="recommendationInsight">Загрузите данные для получения рекомендаций</div>
+                    </div>
+                </div>
 
-                    <!-- Контент вкладок -->
-                    <div class="p-6">
-                        <!-- Вкладка Обзор -->
-                        <div id="tab-overview" class="tab-content">
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div class="chart-container">
-                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Доходы и расходы по месяцам</h3>
-                                    <div id="incomeExpensesChart" class="h-80 flex items-end justify-between gap-2">
-                                        <!-- График будет генерироваться JavaScript -->
-                                        <div class="text-center text-sm text-gray-500">
-                                            Загрузите данные для построения графиков
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="chart-container">
-                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Структура расходов</h3>
-                                    <div id="expensesPieChart" class="h-80 flex items-center justify-center">
-                                        <div class="text-center text-sm text-gray-500">
-                                            Загрузите данные для построения графиков
-                                        </div>
-                                    </div>
-                                </div>
+                <!-- Вкладки -->
+                <div class="tabs">
+                    <button class="tab active" data-tab="overview">Обзор</button>
+                    <button class="tab" data-tab="charts">Графики</button>
+                    <button class="tab" data-tab="details">Детали</button>
+                    <button class="tab" data-tab="export">Экспорт</button>
+                </div>
+
+                <!-- Контент вкладок -->
+                <div class="tab-content active" id="tab-overview">
+                    <div class="chart-grid">
+                        <div class="chart-container">
+                            <div class="chart-title">Динамика доходов и расходов</div>
+                            <div id="incomeExpensesChart" class="chart-placeholder">
+                                График будет построен после анализа
                             </div>
                         </div>
-
-                        <!-- Вкладка Тренды -->
-                        <div id="tab-trends" class="tab-content hidden">
-                            <div class="chart-container">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Тренды доходов и расходов</h3>
-                                <div id="trendsChart" class="h-96">
-                                    <div class="text-center text-sm text-gray-500">
-                                        Анализ трендов будет доступен после загрузки данных
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Вкладка Категории -->
-                        <div id="tab-categories" class="tab-content hidden">
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div class="chart-container">
-                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Топ категорий доходов</h3>
-                                    <div id="incomeCategoriesChart" class="h-80">
-                                        <div class="text-center text-sm text-gray-500">
-                                            Данные по категориям будут отображены здесь
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="chart-container">
-                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Топ категорий расходов</h3>
-                                    <div id="expenseCategoriesChart" class="h-80">
-                                        <div class="text-center text-sm text-gray-500">
-                                            Данные по категориям будут отображены здесь
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Вкладка Сравнение -->
-                        <div id="tab-comparison" class="tab-content hidden">
-                            <div class="chart-container">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Сравнение периодов</h3>
-                                <div id="comparisonChart" class="h-96">
-                                    <div class="text-center text-sm text-gray-500">
-                                        Сравнение периодов будет доступно после загрузки данных
-                                    </div>
-                                </div>
+                        
+                        <div class="chart-container">
+                            <div class="chart-title">Структура расходов</div>
+                            <div id="expensesPieChart" class="chart-placeholder">
+                                Круговая диаграмма будет построена после анализа
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Детальная таблица -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                    <div class="p-6 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900">Детализация данных</h3>
+                <div class="tab-content" id="tab-charts">
+                    <div class="chart-grid">
+                        <div class="chart-container">
+                            <div class="chart-title">Тренды продаж</div>
+                            <div id="salesTrendChart" class="chart-placeholder">
+                                График трендов будет построен после анализа
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <div class="chart-title">Сравнение категорий</div>
+                            <div id="categoryComparisonChart" class="chart-placeholder">
+                                График сравнения будет построен после анализа
+                            </div>
+                        </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категория</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Описание</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Доход</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Расход</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dataTable" class="bg-white divide-y divide-gray-200">
-                                <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                                        Загрузите файл для просмотра данных
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                </div>
+
+                <div class="tab-content" id="tab-details">
+                    <div class="chart-container">
+                        <div class="chart-title">Детализация данных</div>
+                        <div class="data-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Категория</th>
+                                        <th>Описание</th>
+                                        <th>Доход</th>
+                                        <th>Расход</th>
+                                        <th>Прибыль</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableBody">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 2rem; color: #6b7280;">
+                                            Загрузите данные для просмотра деталей
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-export">
+                    <div class="chart-container">
+                        <div class="chart-title">Экспорт результатов</div>
+                        <div style="text-align: center; padding: 2rem;">
+                            <p style="color: #6b7280; margin-bottom: 2rem;">Экспортируйте результаты анализа в различных форматах</p>
+                            <div style="display: flex; gap: 1rem; justify-content: center;">
+                                <button id="exportPdf" class="btn-primary">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    PDF отчет
+                                </button>
+                                <button id="exportExcel" class="btn-primary">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Excel отчет
+                                </button>
+                                <button id="exportCharts" class="btn-primary">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Графики
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- JavaScript -->
-    <script>
-        class DataAnalyzer {
-            constructor() {
-                this.currentFile = null;
-                this.sampleData = null;
-                this.init();
+    <!-- Контейнер для уведомлений -->
+    <div id="notification-container"></div>
+</body>
+</html>
+
+<script>
+class DataAnalyzer {
+    constructor() {
+        this.currentFile = null;
+        this.analysisData = null;
+        this.analysisResults = null;
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.setupTabs();
+    }
+
+    setupEventListeners() {
+        const fileInput = document.getElementById('fileInput');
+        const fileDropZone = document.getElementById('fileDropZone');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const newAnalysisBtn = document.getElementById('newAnalysis');
+
+        // Загрузка файла
+        fileDropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files[0]));
+
+        // Drag & Drop
+        fileDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropZone.style.borderColor = '#667eea';
+            fileDropZone.style.background = '#f0f4ff';
+        });
+
+        fileDropZone.addEventListener('dragleave', () => {
+            fileDropZone.style.borderColor = '#d1d5db';
+            fileDropZone.style.background = '#f9fafb';
+        });
+
+        fileDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleFileSelect(files[0]);
             }
+        });
 
-            init() {
-                this.setupEventListeners();
-                this.generateSampleData();
-            }
+        // Анализ данных
+        analyzeBtn.addEventListener('click', () => this.startAnalysis());
+        newAnalysisBtn.addEventListener('click', () => this.resetAnalysis());
 
-            setupEventListeners() {
-                const fileInput = document.getElementById('fileInput');
-                const fileDropZone = document.getElementById('fileDropZone');
-                const removeFileBtn = document.getElementById('removeFile');
-                const analyzeBtn = document.getElementById('analyzeBtn');
+        // Экспорт
+        document.getElementById('exportPdf').addEventListener('click', () => this.exportPdf());
+        document.getElementById('exportExcel').addEventListener('click', () => this.exportExcel());
+        document.getElementById('exportCharts').addEventListener('click', () => this.exportCharts());
+    }
 
-                // Загрузка файла
-                fileDropZone.addEventListener('click', () => fileInput.click());
-                fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files[0]));
-
-                // Drag & Drop
-                fileDropZone.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    fileDropZone.style.borderColor = '#3b82f6';
-                    fileDropZone.style.backgroundColor = '#eff6ff';
-                });
-
-                fileDropZone.addEventListener('dragleave', () => {
-                    fileDropZone.style.borderColor = '#d1d5db';
-                    fileDropZone.style.backgroundColor = '';
-                });
-
-                fileDropZone.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    fileDropZone.style.borderColor = '#d1d5db';
-                    fileDropZone.style.backgroundColor = '';
-                    if (e.dataTransfer.files.length > 0) {
-                        this.handleFileSelect(e.dataTransfer.files[0]);
-                    }
-                });
-
-                removeFileBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.removeFile();
-                });
-
-                analyzeBtn.addEventListener('click', () => this.analyzeData());
-
-                // Переключение вкладок
-                document.querySelectorAll('.tab-btn').forEach(btn => {
-                    btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
-                });
-            }
-
-            handleFileSelect(file) {
-                if (!file) return;
-
-                const isValidType = file.name.endsWith('.xlsx') || 
-                    file.name.endsWith('.xls') ||
-                    file.name.endsWith('.csv');
-
-                if (!isValidType) {
-                    alert('ОШИБКА: Неподдерживаемый формат файла');
-                    return;
-                }
-
-                this.currentFile = file;
-                this.displayFileInfo(file);
-                document.getElementById('analyzeBtn').classList.remove('hidden');
-                document.getElementById('analysisSettings').classList.remove('hidden');
-            }
-
-            displayFileInfo(file) {
-                document.getElementById('fileName').textContent = file.name;
-                document.getElementById('fileSize').textContent = this.formatFileSize(file.size);
-                document.getElementById('uploadContent').classList.add('hidden');
-                document.getElementById('filePreview').classList.remove('hidden');
-            }
-
-            formatFileSize(bytes) {
-                if (bytes === 0) return '0 Bytes';
-                const k = 1024;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-            }
-
-            removeFile() {
-                this.currentFile = null;
-                document.getElementById('fileInput').value = '';
-                document.getElementById('uploadContent').classList.remove('hidden');
-                document.getElementById('filePreview').classList.add('hidden');
-                document.getElementById('analyzeBtn').classList.add('hidden');
-                document.getElementById('analysisSettings').classList.add('hidden');
-                document.getElementById('analysisResults').classList.add('hidden');
-            }
-
-            generateSampleData() {
-                // Генерация демо-данных для примера
-                this.sampleData = {
-                    metrics: {
-                        totalIncome: 1250000,
-                        totalExpenses: 875000,
-                        netProfit: 375000,
-                        incomeChange: 15.2,
-                        expensesChange: 8.7,
-                        profitChange: 28.5
-                    },
-                    monthlyData: [
-                        { month: 'Янв', income: 98000, expenses: 72000 },
-                        { month: 'Фев', income: 105000, expenses: 68000 },
-                        { month: 'Мар', income: 112000, expenses: 75000 },
-                        { month: 'Апр', income: 108000, expenses: 71000 },
-                        { month: 'Май', income: 115000, expenses: 69000 },
-                        { month: 'Июн', income: 125000, expenses: 82000 }
-                    ],
-                    expensesByCategory: [
-                        { category: 'Зарплаты', amount: 350000, color: '#3b82f6' },
-                        { category: 'Аренда', amount: 180000, color: '#10b981' },
-                        { category: 'Маркетинг', amount: 120000, color: '#f59e0b' },
-                        { category: 'Оборудование', amount: 85000, color: '#ef4444' },
-                        { category: 'Прочие', amount: 140000, color: '#8b5cf6' }
-                    ]
-                };
-            }
-
-            analyzeData() {
-                // Показываем индикатор загрузки
-                const analyzeBtn = document.getElementById('analyzeBtn');
-                const originalText = analyzeBtn.innerHTML;
-                analyzeBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>';
-                analyzeBtn.disabled = true;
-
-                // Имитация анализа данных
-                setTimeout(() => {
-                    this.displayAnalysisResults();
-                    analyzeBtn.innerHTML = originalText;
-                    analyzeBtn.disabled = false;
-                }, 1500);
-            }
-
-            displayAnalysisResults() {
-                document.getElementById('analysisResults').classList.remove('hidden');
+    setupTabs() {
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
                 
-                // Обновляем метрики
-                this.updateMetrics();
-                
-                // Строим графики
-                this.renderCharts();
-                
-                // Заполняем таблицу
-                this.populateDataTable();
-            }
-
-            updateMetrics() {
-                const data = this.sampleData.metrics;
-                
-                document.getElementById('totalIncome').textContent = `₽ ${this.formatNumber(data.totalIncome)}`;
-                document.getElementById('totalExpenses').textContent = `₽ ${this.formatNumber(data.totalExpenses)}`;
-                document.getElementById('netProfit').textContent = `₽ ${this.formatNumber(data.netProfit)}`;
-                
-                document.getElementById('incomeChange').textContent = `+${data.incomeChange}% с прошлого периода`;
-                document.getElementById('expensesChange').textContent = `+${data.expensesChange}% с прошлого периода`;
-                document.getElementById('profitChange').textContent = `+${data.profitChange}% с прошлого периода`;
-            }
-
-            formatNumber(num) {
-                return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-            }
-
-            renderCharts() {
-                this.renderIncomeExpensesChart();
-                this.renderExpensesPieChart();
-            }
-
-            renderIncomeExpensesChart() {
-                const container = document.getElementById('incomeExpensesChart');
-                const data = this.sampleData.monthlyData;
-                
-                container.innerHTML = '';
-                
-                const maxValue = Math.max(...data.map(d => Math.max(d.income, d.expenses)));
-                
-                data.forEach(item => {
-                    const incomeHeight = (item.income / maxValue) * 280;
-                    const expensesHeight = (item.expenses / maxValue) * 280;
-                    
-                    const column = document.createElement('div');
-                    column.className = 'flex flex-col items-center gap-1';
-                    
-                    // Столбец доходов
-                    const incomeBar = document.createElement('div');
-                    incomeBar.className = 'chart-bar w-6 rounded-t';
-                    incomeBar.style.height = `${incomeHeight}px`;
-                    incomeBar.style.background = 'linear-gradient(to top, #10b981, #34d399)';
-                    incomeBar.title = `Доход: ₽${this.formatNumber(item.income)}`;
-                    
-                    // Столбец расходов
-                    const expensesBar = document.createElement('div');
-                    expensesBar.className = 'chart-bar w-6 rounded-t';
-                    expensesBar.style.height = `${expensesHeight}px`;
-                    expensesBar.style.background = 'linear-gradient(to top, #ef4444, #f87171)';
-                    expensesBar.title = `Расход: ₽${this.formatNumber(item.expenses)}`;
-                    
-                    // Подпись месяца
-                    const label = document.createElement('div');
-                    label.className = 'text-xs text-gray-600 mt-2';
-                    label.textContent = item.month;
-                    
-                    column.appendChild(incomeBar);
-                    column.appendChild(expensesBar);
-                    column.appendChild(label);
-                    container.appendChild(column);
-                });
-
-                // Легенда
-                const legend = document.createElement('div');
-                legend.className = 'flex justify-center gap-4 mt-4';
-                legend.innerHTML = `
-                    <div class="chart-legend">
-                        <div class="legend-color" style="background: linear-gradient(to top, #10b981, #34d399);"></div>
-                        <span>Доходы</span>
-                    </div>
-                    <div class="chart-legend">
-                        <div class="legend-color" style="background: linear-gradient(to top, #ef4444, #f87171);"></div>
-                        <span>Расходы</span>
-                    </div>
-                `;
-                container.appendChild(legend);
-            }
-
-            renderExpensesPieChart() {
-                const container = document.getElementById('expensesPieChart');
-                const data = this.sampleData.expensesByCategory;
-                
-                container.innerHTML = '';
-                
-                // Создаем SVG для круговой диаграммы
-                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                svg.setAttribute('width', '300');
-                svg.setAttribute('height', '300');
-                svg.setAttribute('viewBox', '0 0 300 300');
-                
-                const total = data.reduce((sum, item) => sum + item.amount, 0);
-                let currentAngle = 0;
-                
-                data.forEach((item, index) => {
-                    const percentage = (item.amount / total) * 100;
-                    const angle = (percentage / 100) * 360;
-                    
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    const startAngle = currentAngle;
-                    const endAngle = currentAngle + angle;
-                    
-                    const start = this.polarToCartesian(150, 150, 120, startAngle);
-                    const end = this.polarToCartesian(150, 150, 120, endAngle);
-                    const largeArcFlag = angle > 180 ? 1 : 0;
-                    
-                    const pathData = [
-                        `M 150 150`,
-                        `L ${start.x} ${start.y}`,
-                        `A 120 120 0 ${largeArcFlag} 1 ${end.x} ${end.y}`,
-                        'Z'
-                    ].join(' ');
-                    
-                    path.setAttribute('d', pathData);
-                    path.setAttribute('fill', item.color);
-                    path.setAttribute('stroke', 'white');
-                    path.setAttribute('stroke-width', '2');
-                    path.style.cursor = 'pointer';
-                    path.title = `${item.category}: ${percentage.toFixed(1)}% (₽${this.formatNumber(item.amount)})`;
-                    
-                    svg.appendChild(path);
-                    currentAngle += angle;
-                });
-                
-                container.appendChild(svg);
-                
-                // Легенда
-                const legend = document.createElement('div');
-                legend.className = 'grid grid-cols-2 gap-2 mt-4';
-                
-                data.forEach(item => {
-                    const percentage = ((item.amount / total) * 100).toFixed(1);
-                    const legendItem = document.createElement('div');
-                    legendItem.className = 'chart-legend';
-                    legendItem.innerHTML = `
-                        <div class="legend-color" style="background-color: ${item.color};"></div>
-                        <span class="text-sm">${item.category} (${percentage}%)</span>
-                    `;
-                    legend.appendChild(legendItem);
-                });
-                
-                container.appendChild(legend);
-            }
-
-            polarToCartesian(centerX, centerY, radius, angleInDegrees) {
-                const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-                return {
-                    x: centerX + (radius * Math.cos(angleInRadians)),
-                    y: centerY + (radius * Math.sin(angleInRadians))
-                };
-            }
-
-            populateDataTable() {
-                const tbody = document.getElementById('dataTable');
-                tbody.innerHTML = '';
-                
-                // Демо-данные для таблицы
-                const demoData = [
-                    { date: '2024-01-15', category: 'Продажи', description: 'Продажа продукта А', income: 50000, expense: 0 },
-                    { date: '2024-01-18', category: 'Зарплаты', description: 'Зарплата сотрудникам', income: 0, expense: 250000 },
-                    { date: '2024-01-20', category: 'Маркетинг', description: 'Рекламная кампания', income: 0, expense: 50000 },
-                    { date: '2024-02-05', category: 'Продажи', description: 'Продажа продукта Б', income: 75000, expense: 0 },
-                    { date: '2024-02-10', category: 'Аренда', description: 'Аренда офиса', income: 0, expense: 150000 }
-                ];
-                
-                demoData.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.date}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.category}</td>
-                        <td class="px-6 py-4 text-sm text-gray-900">${item.description}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">${item.income ? `₽${this.formatNumber(item.income)}` : '-'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">${item.expense ? `₽${this.formatNumber(item.expense)}` : '-'}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            }
-
-            switchTab(tabName) {
                 // Обновляем активную вкладку
-                document.querySelectorAll('.tab-btn').forEach(btn => {
-                    btn.classList.remove('tab-active');
-                    btn.classList.add('tab-inactive');
-                });
-                
-                document.querySelector(`[data-tab="${tabName}"]`).classList.remove('tab-inactive');
-                document.querySelector(`[data-tab="${tabName}"]`).classList.add('tab-active');
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
                 
                 // Показываем соответствующий контент
                 document.querySelectorAll('.tab-content').forEach(content => {
-                    content.classList.add('hidden');
+                    content.classList.remove('active');
                 });
-                
-                document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-            }
+                document.getElementById(`tab-${tabName}`).classList.add('active');
+            });
+        });
+    }
+
+    handleFileSelect(file) {
+        if (!file) return;
+
+        const allowedTypes = ['.xlsx', '.xls', '.csv'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+        if (!allowedTypes.includes(fileExtension)) {
+            this.showNotification('Ошибка: поддерживаются только XLSX, XLS, CSV файлы', 'error');
+            return;
         }
 
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', () => {
-            window.dataAnalyzer = new DataAnalyzer();
+        if (file.size > 10 * 1024 * 1024) {
+            this.showNotification('Ошибка: файл слишком большой (макс. 10MB)', 'error');
+            return;
+        }
+
+        this.currentFile = file;
+        this.showFilePreview(file);
+        document.getElementById('analysisSettings').classList.remove('hidden');
+    }
+
+    showFilePreview(file) {
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        const filePreview = document.getElementById('filePreview');
+        
+        filePreview.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 48px; height: 48px; background: #667eea; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <svg fill="white" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-weight: 600; color: #374151;">${file.name}</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">${fileSize} MB</div>
+                </div>
+                <button type="button" onclick="dataAnalyzer.removeFile()" style="margin-left: auto; background: none; border: none; color: #6b7280; cursor: pointer;">
+                    <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                        <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.getElementById('uploadContent').classList.add('hidden');
+        filePreview.classList.remove('hidden');
+    }
+
+    removeFile() {
+        this.currentFile = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('uploadContent').classList.remove('hidden');
+        document.getElementById('filePreview').classList.add('hidden');
+        document.getElementById('analysisSettings').classList.add('hidden');
+        document.getElementById('analysisResults').classList.add('hidden');
+        document.getElementById('detailedResults').classList.add('hidden');
+    }
+
+    async startAnalysis() {
+        if (!this.currentFile) {
+            this.showNotification('Выберите файл для анализа', 'error');
+            return;
+        }
+
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const originalText = analyzeBtn.innerHTML;
+
+        try {
+            analyzeBtn.innerHTML = 'Подготовка...';
+            analyzeBtn.disabled = true;
+
+            // Показываем прогресс
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('analysisProgress').classList.remove('hidden');
+            document.getElementById('analysisProgressFill').style.width = '30%';
+            document.getElementById('analysisProgressText').textContent = 'Чтение файла...';
+
+            const formData = new FormData();
+            formData.append('file', this.currentFile);
+            formData.append('analysis_type', document.getElementById('analysisType').value);
+            
+            // Безопасно получаем значения дат
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+            
+            if (startDate && startDate.value) {
+                formData.append('start_date', startDate.value);
+            }
+            if (endDate && endDate.value) {
+                formData.append('end_date', endDate.value);
+            }
+            
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+            // Обновляем прогресс
+            document.getElementById('analysisProgressFill').style.width = '60%';
+            document.getElementById('analysisProgressText').textContent = 'Анализ данных...';
+
+            const response = await fetch('/analyze-file', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Non-JSON response:', text.substring(0, 500));
+                throw new Error('Сервер вернул некорректный ответ');
+            }
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || `HTTP error! status: ${response.status}`);
+            }
+
+            if (result.success) {
+                document.getElementById('analysisProgressFill').style.width = '100%';
+                document.getElementById('analysisProgressText').textContent = 'Завершение анализа...';
+
+                setTimeout(() => {
+                    this.analysisResults = result.data;
+                    this.displayResults();
+                    document.getElementById('analysisProgress').classList.add('hidden');
+                    document.getElementById('analysisResults').classList.remove('hidden');
+                    document.getElementById('detailedResults').classList.remove('hidden');
+                    
+                    this.showNotification('Анализ завершен успешно!', 'success');
+                }, 1000);
+
+            } else {
+                throw new Error(result.message || 'Ошибка анализа данных');
+            }
+
+        } catch (error) {
+            console.error('Analysis error:', error);
+            this.showNotification(error.message, 'error');
+            document.getElementById('analysisProgress').classList.add('hidden');
+            document.getElementById('uploadSection').classList.remove('hidden');
+        } finally {
+            analyzeBtn.innerHTML = originalText;
+            analyzeBtn.disabled = false;
+        }
+    }
+
+    displayResults() {
+        if (!this.analysisResults) return;
+
+        // Обновляем метрики
+        this.updateMetrics();
+        
+        // Строим графики
+        this.renderCharts();
+        
+        // Заполняем таблицу
+        this.populateDataTable();
+        
+        // Показываем инсайты
+        this.showInsights();
+    }
+
+    updateMetrics() {
+        const metrics = this.analysisResults.metrics || {};
+        
+        document.getElementById('totalIncome').textContent = `₽ ${this.formatNumber(metrics.total_income || 0)}`;
+        document.getElementById('totalExpenses').textContent = `₽ ${this.formatNumber(metrics.total_expenses || 0)}`;
+        document.getElementById('netProfit').textContent = `₽ ${this.formatNumber(metrics.net_profit || 0)}`;
+        document.getElementById('growthRate').textContent = `${metrics.growth_rate || 0}%`;
+        
+        // Обновляем изменения
+        const incomeChange = document.getElementById('incomeChange');
+        const expensesChange = document.getElementById('expensesChange');
+        const profitChange = document.getElementById('profitChange');
+        const growthTrend = document.getElementById('growthTrend');
+        
+        incomeChange.textContent = `${metrics.income_change >= 0 ? '+' : ''}${metrics.income_change || 0}%`;
+        incomeChange.className = `metric-change ${metrics.income_change >= 0 ? 'positive' : 'negative'}`;
+        
+        expensesChange.textContent = `${metrics.expenses_change >= 0 ? '+' : ''}${metrics.expenses_change || 0}%`;
+        expensesChange.className = `metric-change ${metrics.expenses_change <= 0 ? 'positive' : 'negative'}`;
+        
+        profitChange.textContent = `${metrics.profit_change >= 0 ? '+' : ''}${metrics.profit_change || 0}%`;
+        profitChange.className = `metric-change ${metrics.profit_change >= 0 ? 'positive' : 'negative'}`;
+        
+        growthTrend.textContent = metrics.growth_trend || 'Стабильный';
+        growthTrend.className = `metric-change ${metrics.growth_trend === 'Рост' ? 'positive' : metrics.growth_trend === 'Спад' ? 'negative' : ''}`;
+    }
+
+    renderCharts() {
+        this.renderIncomeExpensesChart();
+        this.renderExpensesPieChart();
+        this.renderSalesTrendChart();
+        this.renderCategoryComparisonChart();
+    }
+
+    renderIncomeExpensesChart() {
+        const container = document.getElementById('incomeExpensesChart');
+        const data = this.analysisResults.monthly_data || [];
+        
+        if (data.length === 0) {
+            container.innerHTML = '<div class="chart-placeholder">Недостаточно данных для построения графика</div>';
+            return;
+        }
+
+        // Простая реализация столбчатой диаграммы
+        let html = '<div style="display: flex; align-items: end; justify-content: space-around; height: 250px; padding: 20px 0;">';
+        
+        const maxValue = Math.max(...data.map(d => Math.max(d.income || 0, d.expenses || 0)));
+        
+        data.forEach(item => {
+            const incomeHeight = ((item.income || 0) / maxValue) * 200;
+            const expensesHeight = ((item.expenses || 0) / maxValue) * 200;
+            
+            html += `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <div style="display: flex; align-items: end; gap: 2px;">
+                        <div style="width: 20px; height: ${incomeHeight}px; background: linear-gradient(to top, #10b981, #34d399); border-radius: 3px 3px 0 0;" 
+                             title="Доход: ₽${this.formatNumber(item.income || 0)}"></div>
+                        <div style="width: 20px; height: ${expensesHeight}px; background: linear-gradient(to top, #ef4444, #f87171); border-radius: 3px 3px 0 0;"
+                             title="Расход: ₽${this.formatNumber(item.expenses || 0)}"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">${item.month}</div>
+                </div>
+            `;
         });
-    </script>
-</body>
-</html>
+        
+        html += '</div>';
+        
+        // Добавляем легенду
+        html += `
+            <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="width: 12px; height: 12px; background: #10b981; border-radius: 2px;"></div>
+                    <span style="font-size: 12px;">Доходы</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 2px;"></div>
+                    <span style="font-size: 12px;">Расходы</span>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+
+    renderExpensesPieChart() {
+        const container = document.getElementById('expensesPieChart');
+        const data = this.analysisResults.expenses_by_category || [];
+        
+        if (data.length === 0) {
+            container.innerHTML = '<div class="chart-placeholder">Недостаточно данных для построения диаграммы</div>';
+            return;
+        }
+
+        // Цвета для категорий
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'];
+        
+        let html = '<div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; justify-content: center;">';
+        
+        // Круговая диаграмма
+        html += '<div style="position: relative; width: 250px; height: 250px;">';
+        
+        const total = data.reduce((sum, item) => sum + (item.amount || 0), 0);
+        let currentAngle = 0;
+        
+        data.forEach((item, index) => {
+            const percentage = ((item.amount || 0) / total) * 100;
+            const angle = (percentage / 100) * 360;
+            
+            if (percentage > 0) {
+                html += `
+                    <div style="
+                        position: absolute;
+                        width: 250px;
+                        height: 250px;
+                        border-radius: 50%;
+                        background: conic-gradient(
+                            ${colors[index % colors.length]} ${currentAngle}deg,
+                            ${colors[index % colors.length]} ${currentAngle + angle}deg,
+                            transparent ${currentAngle + angle}deg,
+                            transparent 360deg
+                        );
+                    "></div>
+                `;
+                currentAngle += angle;
+            }
+        });
+        
+        // Центральный круг
+        html += `
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 80px;
+                height: 80px;
+                background: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                color: #374151;
+            ">
+                ${total > 0 ? '₽' + this.formatNumber(total) : ''}
+            </div>
+        `;
+        
+        html += '</div>';
+        
+        // Легенда
+        html += '<div style="min-width: 200px;">';
+        data.forEach((item, index) => {
+            const percentage = ((item.amount || 0) / total) * 100;
+            if (percentage > 0) {
+                const displayName = item.subcategory ? 
+                    `${item.category} - ${item.subcategory}` : item.category;
+                    
+                html += `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px;">
+                        <div style="width: 16px; height: 16px; background: ${colors[index % colors.length]}; border-radius: 3px;"></div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</div>
+                            <div style="color: #6b7280; font-size: 12px;">${percentage.toFixed(1)}% (₽${this.formatNumber(item.amount)})</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        html += '</div>';
+        
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+
+    renderSalesTrendChart() {
+        const container = document.getElementById('salesTrendChart');
+        const monthlyData = this.analysisResults.monthly_data || [];
+        
+        if (monthlyData.length === 0) {
+            container.innerHTML = '<div class="chart-placeholder">Недостаточно данных для построения графика трендов</div>';
+            return;
+        }
+
+        let html = '<div style="height: 300px; padding: 20px;">';
+        html += '<div style="display: flex; align-items: end; justify-content: space-between; height: 200px; margin-bottom: 20px;">';
+        
+        const maxIncome = Math.max(...monthlyData.map(d => d.income || 0));
+        
+        monthlyData.forEach(item => {
+            const height = ((item.income || 0) / maxIncome) * 180;
+            const trend = this.calculateTrend(monthlyData, item.month);
+            
+            html += `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <div style="width: 30px; height: ${height}px; background: linear-gradient(to top, #10b981, #34d399); border-radius: 5px 5px 0 0; position: relative;">
+                        <div style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 12px; color: #059669; font-weight: bold;">
+                            ${trend > 0 ? '↗' : trend < 0 ? '↘' : '→'}
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #6b7280; text-align: center;">${item.month}</div>
+                    <div style="font-size: 11px; color: #374151; font-weight: 500;">₽${this.formatNumber(item.income)}</div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        
+        // Линия тренда
+        html += '<div style="border-top: 2px dashed #3b82f6; margin: 20px 0; position: relative;">';
+        html += '<div style="position: absolute; top: -12px; right: 0; background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">Линия тренда</div>';
+        html += '</div>';
+        
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+
+    calculateTrend(monthlyData, currentMonth) {
+        const currentIndex = monthlyData.findIndex(d => d.month === currentMonth);
+        if (currentIndex <= 0) return 0;
+        
+        const current = monthlyData[currentIndex].income || 0;
+        const previous = monthlyData[currentIndex - 1].income || 0;
+        
+        if (previous === 0) return 0;
+        
+        return ((current - previous) / previous) * 100;
+    }
+
+    renderCategoryComparisonChart() {
+        const container = document.getElementById('categoryComparisonChart');
+        const data = this.analysisResults.expenses_by_category || [];
+        
+        if (data.length === 0) {
+            container.innerHTML = '<div class="chart-placeholder">Недостаточно данных для сравнения категорий</div>';
+            return;
+        }
+
+        let html = '<div style="height: 300px; padding: 20px;">';
+        html += '<div style="display: flex; align-items: end; justify-content: space-around; height: 200px; margin-bottom: 20px;">';
+        
+        const maxAmount = Math.max(...data.map(d => d.amount || 0));
+        
+        data.forEach((item, index) => {
+            const height = ((item.amount || 0) / maxAmount) * 180;
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+            
+            html += `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <div style="width: 40px; height: ${height}px; background: ${colors[index % colors.length]}; border-radius: 5px 5px 0 0;"
+                         title="${item.category}: ₽${this.formatNumber(item.amount)}">
+                    </div>
+                    <div style="font-size: 12px; color: #6b7280; text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis;">
+                        ${item.category}
+                    </div>
+                    <div style="font-size: 11px; color: #374151; font-weight: 500;">₽${this.formatNumber(item.amount)}</div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+
+    populateDataTable() {
+        const tbody = document.getElementById('dataTableBody');
+        const data = this.analysisResults.detailed_data || [];
+        
+        if (data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 2rem; color: #6b7280;">
+                        Нет данных для отображения
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        let html = '';
+        data.forEach(item => {
+            html += `
+                <tr>
+                    <td>${item.date || '-'}</td>
+                    <td>${item.category || '-'}</td>
+                    <td>${item.description || '-'}</td>
+                    <td class="${(item.income || 0) > 0 ? 'positive-amount' : ''}">
+                        ${(item.income || 0) > 0 ? `₽${this.formatNumber(item.income)}` : '-'}
+                    </td>
+                    <td class="${(item.expense || 0) > 0 ? 'negative-amount' : ''}">
+                        ${(item.expense || 0) > 0 ? `₽${this.formatNumber(item.expense)}` : '-'}
+                    </td>
+                    <td class="${(item.profit || 0) >= 0 ? 'positive-amount' : 'negative-amount'}">
+                        ₽${this.formatNumber(item.profit || 0)}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+    }
+
+    showInsights() {
+        const insights = this.analysisResults.insights || {};
+        
+        document.getElementById('positiveInsight').textContent = insights.positive || 'Анализ данных не выявил значительных положительных тенденций';
+        document.getElementById('warningInsight').textContent = insights.warning || 'Критических проблем не обнаружено';
+        document.getElementById('recommendationInsight').textContent = insights.recommendation || 'Рекомендуется продолжить мониторинг ключевых показателей';
+    }
+
+    resetAnalysis() {
+        this.removeFile();
+        document.getElementById('analysisResults').classList.add('hidden');
+        document.getElementById('detailedResults').classList.add('hidden');
+        document.getElementById('uploadSection').classList.remove('hidden');
+    }
+
+    formatNumber(num) {
+        return new Intl.NumberFormat('ru-RU').format(num);
+    }
+
+    showNotification(message, type = 'info') {
+        const container = document.getElementById('notification-container');
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            ${type === 'error' ? 'background: #ef4444;' : 'background: #10b981;'}
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        `;
+        notification.textContent = message;
+        container.appendChild(notification);
+
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+
+    async exportPdf() {
+        this.showNotification('Функция экспорта в PDF в разработке', 'info');
+    }
+
+    async exportExcel() {
+        this.showNotification('Функция экспорта в Excel в разработке', 'info');
+    }
+
+    async exportCharts() {
+        this.showNotification('Функция экспорта графиков в разработке', 'info');
+    }
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    window.dataAnalyzer = new DataAnalyzer();
+});
+</script>

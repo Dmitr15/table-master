@@ -2,9 +2,23 @@
 import './bootstrap';
 import 'flowbite';
 
+// Импорт сервисов
+import conversionService from './services/conversionService';
+import mergeService from './services/mergeService';
+import splitService from './services/splitService';
+import analyzeService from './services/analyzeService';
+import notificationService from './services/notificationService';
+
 // Основной класс приложения Table Master
 class TableMasterApp {
     constructor() {
+        this.services = {
+            conversion: conversionService,
+            merge: mergeService,
+            split: splitService,
+            analyze: analyzeService,
+            notification: notificationService
+        };
         this.init();
     }
 
@@ -12,7 +26,6 @@ class TableMasterApp {
         this.initEventListeners();
         this.initComponents();
         this.initFileHandling();
-        this.initNotifications();
         console.log('Table Master App initialized');
     }
 
@@ -25,29 +38,349 @@ class TableMasterApp {
             this.initModals();
         });
 
-        // Обработчик для всех форм с data-ajax-form
-        document.addEventListener('submit', (e) => {
-            if (e.target.dataset.ajaxForm) {
-                e.preventDefault();
-                this.handleAjaxForm(e.target);
-            }
+        // Глобальный обработчик ошибок
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            this.services.notification.error('Произошла непредвиденная ошибка');
         });
     }
 
     // Инициализация компонентов
     initComponents() {
         this.initFileUploaders();
-        this.initDataTables();
-        this.initCharts();
+        this.initPageSpecificHandlers();
     }
 
-    // Работа с файлами
+    // Инициализация обработчиков для конкретных страниц
+    initPageSpecificHandlers() {
+        const path = window.location.pathname;
+        
+        switch(path) {
+            case '/converter':
+                this.initConverterHandlers();
+                break;
+            case '/merger':
+                this.initMergerHandlers();
+                break;
+            case '/splitter':
+                this.initSplitterHandlers();
+                break;
+            case '/analyzer':
+                this.initAnalyzerHandlers();
+                break;
+        }
+    }
+
+    // Обработчики для конвертера
+    initConverterHandlers() {
+        const form = document.getElementById('converterForm');
+        if (form) {
+            form.addEventListener('submit', (e) => this.handleConversion(e));
+        }
+
+        // Обработчик выбора формата для предпросмотра
+        const formatSelect = document.getElementById('outputFormat');
+        if (formatSelect) {
+            formatSelect.addEventListener('change', () => this.updateConversionPreview());
+        }
+    }
+
+    // Обработчики для слияния
+    initMergerHandlers() {
+        const form = document.getElementById('mergeForm');
+        if (form) {
+            form.addEventListener('submit', (e) => this.handleMerge(e));
+        }
+
+        // Обработчик изменения метода слияния
+        const methodSelect = document.getElementById('mergeMethod');
+        if (methodSelect) {
+            methodSelect.addEventListener('change', (e) => this.toggleMergeSettings(e.target.value));
+        }
+    }
+
+    // Обработчики для разделения
+    initSplitterHandlers() {
+        const form = document.getElementById('splitForm');
+        if (form) {
+            form.addEventListener('submit', (e) => this.handleSplit(e));
+        }
+
+        // Обработчик изменения метода разделения
+        const methodOptions = document.querySelectorAll('.split-option');
+        methodOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                const method = e.currentTarget.dataset.method;
+                this.toggleSplitSettings(method);
+            });
+        });
+    }
+
+    // Обработчики для анализа
+    initAnalyzerHandlers() {
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            analyzeBtn.addEventListener('click', () => this.handleAnalysis());
+        }
+
+        // Обработчик переключения вкладок
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = e.currentTarget.dataset.tab;
+                this.switchAnalysisTab(tabName);
+            });
+        });
+    }
+
+    // === КОНВЕРТЕР ===
+    async handleConversion(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            this.services.notification.error('Пожалуйста, выберите файл');
+            return;
+        }
+
+        const format = document.getElementById('outputFormat').value;
+        if (!format) {
+            this.services.notification.error('Пожалуйста, выберите формат');
+            return;
+        }
+
+        const includeHeaders = document.querySelector('input[name="include_headers"]')?.checked ?? true;
+        const prettyPrint = document.querySelector('input[name="pretty_print"]')?.checked ?? false;
+
+        const convertBtn = form.querySelector('button[type="submit"]');
+        const originalText = convertBtn.innerHTML;
+
+        try {
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>';
+
+            const result = await this.services.conversion.convertFile(file, format, {
+                includeHeaders,
+                prettyPrint
+            });
+
+            if (result.success) {
+                this.downloadFile(result.blob, result.filename);
+                this.showConversionResult();
+                this.services.notification.success('Файл успешно сконвертирован!');
+            } else {
+                this.services.notification.error(result.error);
+            }
+
+        } catch (error) {
+            this.services.notification.error('Ошибка при конвертации: ' + error.message);
+        } finally {
+            convertBtn.disabled = false;
+            convertBtn.innerHTML = originalText;
+        }
+    }
+
+    // === СЛИЯНИЕ ===
+    async handleMerge(e) {
+        e.preventDefault();
+        
+        const fileInputs = [document.getElementById('file1Input'), document.getElementById('file2Input')];
+        const files = fileInputs.map(input => input.files[0]).filter(Boolean);
+        
+        if (files.length < 2) {
+            this.services.notification.error('Пожалуйста, выберите как минимум 2 файла');
+            return;
+        }
+
+        const method = document.getElementById('mergeMethod').value;
+        const joinColumn = document.getElementById('joinColumn')?.value;
+        const includeHeaders = document.querySelector('input[name="include_headers"]')?.checked ?? true;
+
+        const mergeBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = mergeBtn.innerHTML;
+
+        try {
+            mergeBtn.disabled = true;
+            mergeBtn.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>';
+
+            const result = await this.services.merge.mergeFiles(files, method, {
+                joinColumn,
+                includeHeaders
+            });
+
+            if (result.success) {
+                this.downloadFile(result.blob, result.filename);
+                this.showMergeResult();
+                this.services.notification.success('Файлы успешно объединены!');
+            } else {
+                this.services.notification.error(result.error);
+            }
+
+        } catch (error) {
+            this.services.notification.error('Ошибка при слиянии: ' + error.message);
+        } finally {
+            mergeBtn.disabled = false;
+            mergeBtn.innerHTML = originalText;
+        }
+    }
+
+    // === РАЗДЕЛЕНИЕ ===
+    async handleSplit(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            this.services.notification.error('Пожалуйста, выберите файл');
+            return;
+        }
+
+        const method = this.currentSplitMethod || 'rows';
+        const rowsPerFile = document.getElementById('rowsPerFile')?.value;
+        const splitColumn = document.getElementById('splitColumn')?.value;
+        const includeHeaders = document.querySelector('input[name="include_headers"]')?.checked ?? true;
+
+        const splitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = splitBtn.innerHTML;
+
+        try {
+            splitBtn.disabled = true;
+            splitBtn.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>';
+
+            const result = await this.services.split.splitFile(file, method, {
+                rowsPerFile,
+                splitColumn,
+                includeHeaders
+            });
+
+            if (result.success) {
+                this.downloadFile(result.blob, result.filename);
+                this.showSplitResult();
+                this.services.notification.success('Файл успешно разделен!');
+            } else {
+                this.services.notification.error(result.error);
+            }
+
+        } catch (error) {
+            this.services.notification.error('Ошибка при разделении: ' + error.message);
+        } finally {
+            splitBtn.disabled = false;
+            splitBtn.innerHTML = originalText;
+        }
+    }
+
+    // === АНАЛИЗ ===
+    async handleAnalysis() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            this.services.notification.error('Пожалуйста, выберите файл');
+            return;
+        }
+
+        const analysisType = document.getElementById('reportType').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const showTrends = document.getElementById('showTrends')?.checked ?? true;
+
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const originalText = analyzeBtn.innerHTML;
+
+        try {
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>';
+
+            const result = await this.services.analyze.analyzeData(file, analysisType, {
+                startDate,
+                endDate,
+                includeCharts: showTrends
+            });
+
+            if (result.success) {
+                this.displayAnalysisResults(result.data);
+                this.services.notification.success('Анализ данных завершен!');
+            } else {
+                this.services.notification.error(result.error);
+            }
+
+        } catch (error) {
+            this.services.notification.error('Ошибка при анализе: ' + error.message);
+        } finally {
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = originalText;
+        }
+    }
+
+    // Вспомогательные методы
+    downloadFile(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    showConversionResult() {
+        const form = document.getElementById('converterForm');
+        const result = document.getElementById('conversionResult');
+        if (form && result) {
+            form.classList.add('hidden');
+            result.classList.remove('hidden');
+        }
+    }
+
+    showMergeResult() {
+        const form = document.getElementById('mergeForm');
+        const result = document.getElementById('mergeResult');
+        if (form && result) {
+            form.classList.add('hidden');
+            result.classList.remove('hidden');
+        }
+    }
+
+    showSplitResult() {
+        const form = document.getElementById('splitForm');
+        const result = document.getElementById('splitResult');
+        if (form && result) {
+            form.classList.add('hidden');
+            result.classList.remove('hidden');
+        }
+    }
+
+    displayAnalysisResults(data) {
+        document.getElementById('analysisResults').classList.remove('hidden');
+        // Здесь будет логика отображения результатов анализа
+        this.updateMetrics(data.metrics);
+        this.renderCharts(data.charts);
+        this.populateDataTable(data.tableData);
+    }
+
+    updateMetrics(metrics) {
+        if (metrics) {
+            document.getElementById('totalIncome').textContent = `₽ ${this.formatNumber(metrics.totalIncome)}`;
+            document.getElementById('totalExpenses').textContent = `₽ ${this.formatNumber(metrics.totalExpenses)}`;
+            document.getElementById('netProfit').textContent = `₽ ${this.formatNumber(metrics.netProfit)}`;
+        }
+    }
+
+    formatNumber(num) {
+        return num?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') || '0';
+    }
+
+    // ... остальные методы (initFileHandling, initFileUploaders, handleNavigation и т.д.) остаются без изменений
     initFileHandling() {
         this.uploadedFiles = new Map();
         this.initDragAndDrop();
     }
 
-    // Drag & Drop функциональность
     initDragAndDrop() {
         const dropZones = document.querySelectorAll('[data-drop-zone]');
         
@@ -69,18 +402,16 @@ class TableMasterApp {
         });
     }
 
-    // Обработка перетащенных файлов
     handleDroppedFiles(files, dropZone) {
         Array.from(files).forEach(file => {
             if (this.isValidFileType(file)) {
                 this.processFile(file, dropZone);
             } else {
-                this.showNotification(`Неподдерживаемый формат файла: ${file.name}`, 'error');
+                this.services.notification.error(`Неподдерживаемый формат файла: ${file.name}`);
             }
         });
     }
 
-    // Валидация типа файла
     isValidFileType(file) {
         const validTypes = [
             'application/vnd.ms-excel',
@@ -96,61 +427,21 @@ class TableMasterApp {
                file.name.endsWith('.json');
     }
 
-    // Обработка файла
-    async processFile(file, targetElement) {
+    processFile(file, targetElement) {
         const fileId = Date.now().toString();
-        
-        // Создаем объект файла
         const fileObject = {
             id: fileId,
             name: file.name,
             size: file.size,
             type: file.type,
-            file: file,
-            preview: null
+            file: file
         };
 
         this.uploadedFiles.set(fileId, fileObject);
-        
-        // Показываем превью
         this.showFilePreview(fileObject, targetElement);
-        
-        // Парсим Excel/CSV если нужно
-        if (file.type.includes('sheet') || file.name.endsWith('.csv')) {
-            await this.parseTableFile(fileObject);
-        }
+        this.services.notification.success(`Файл "${file.name}" успешно загружен`);
     }
 
-    // Парсинг табличных файлов
-    async parseTableFile(fileObject) {
-        try {
-            // Здесь будет интеграция с библиотекой для парсинга Excel/CSV
-            // Например, с помощью SheetJS или Papa Parse
-            console.log('Parsing file:', fileObject.name);
-            
-            // Временная заглушка
-            this.showNotification(`Файл "${fileObject.name}" успешно загружен`, 'success');
-            
-        } catch (error) {
-            console.error('Error parsing file:', error);
-            this.showNotification(`Ошибка при обработке файла: ${error.message}`, 'error');
-        }
-    }
-
-    // Инициализация загрузчиков файлов
-    initFileUploaders() {
-        const fileInputs = document.querySelectorAll('input[type="file"][data-file-upload]');
-        
-        fileInputs.forEach(input => {
-            input.addEventListener('change', (e) => {
-                Array.from(e.target.files).forEach(file => {
-                    this.processFile(file, e.target.closest('[data-file-container]'));
-                });
-            });
-        });
-    }
-
-    // Показ превью файла
     showFilePreview(fileObject, container) {
         const previewHtml = `
             <div class="file-item" data-file-id="${fileObject.id}">
@@ -176,14 +467,12 @@ class TableMasterApp {
         if (container) {
             container.insertAdjacentHTML('beforeend', previewHtml);
             
-            // Обработчик удаления файла
             container.querySelector(`[data-remove-file="${fileObject.id}"]`).addEventListener('click', () => {
                 this.removeFile(fileObject.id);
             });
         }
     }
 
-    // Форматирование размера файла
     formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -192,7 +481,6 @@ class TableMasterApp {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // Удаление файла
     removeFile(fileId) {
         this.uploadedFiles.delete(fileId);
         const fileElement = document.querySelector(`[data-file-id="${fileId}"]`);
@@ -201,9 +489,7 @@ class TableMasterApp {
         }
     }
 
-    // Навигация
     handleNavigation() {
-        // Активный пункт меню
         const currentPath = window.location.pathname;
         const navLinks = document.querySelectorAll('[data-nav-link]');
         
@@ -214,135 +500,72 @@ class TableMasterApp {
         });
     }
 
-    // Уведомления
-    initNotifications() {
-        this.notificationContainer = document.getElementById('notification-container');
-        if (!this.notificationContainer) {
-            this.notificationContainer = document.createElement('div');
-            this.notificationContainer.id = 'notification-container';
-            this.notificationContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
-            document.body.appendChild(this.notificationContainer);
-        }
-    }
-
-    showNotification(message, type = 'info', duration = 5000) {
-        const notification = document.createElement('div');
-        notification.className = `alert-${type} fade-in transform transition-all duration-300`;
-        notification.innerHTML = `
-            <div class="flex items-center justify-between">
-                <span>${message}</span>
-                <button type="button" class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.parentElement.remove()">
-                    &times;
-                </button>
-            </div>
-        `;
+    initFileUploaders() {
+        const fileInputs = document.querySelectorAll('input[type="file"][data-file-upload]');
         
-        this.notificationContainer.appendChild(notification);
-        
-        // Автоматическое удаление
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.style.opacity = '0';
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => notification.remove(), 300);
-            }
-        }, duration);
-    }
-
-    // Инициализация таблиц данных
-    initDataTables() {
-        // Интеграция с DataTables или кастомная реализация
-        const tables = document.querySelectorAll('[data-datatable]');
-        tables.forEach(table => {
-            this.enhanceTable(table);
-        });
-    }
-
-    // Улучшение таблиц
-    enhanceTable(table) {
-        // Добавляем функциональность сортировки, фильтрации
-        const headers = table.querySelectorAll('th[data-sortable]');
-        headers.forEach(header => {
-            header.style.cursor = 'pointer';
-            header.addEventListener('click', () => {
-                this.sortTable(table, header.cellIndex);
+        fileInputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                Array.from(e.target.files).forEach(file => {
+                    this.processFile(file, e.target.closest('[data-file-container]'));
+                });
             });
         });
     }
 
-    // Сортировка таблицы
-    sortTable(table, columnIndex) {
-        // Реализация сортировки
-        console.log('Sorting table by column:', columnIndex);
-    }
-
-    // Инициализация графиков
-    initCharts() {
-        // Интеграция с Chart.js или другой библиотекой
-        const chartContainers = document.querySelectorAll('[data-chart]');
-        chartContainers.forEach(container => {
-            this.initChart(container);
-        });
-    }
-
-    initChart(container) {
-        // Заглушка для инициализации графиков
-        console.log('Initializing chart in:', container);
-    }
-
-    // Вспомогательные методы
     initTooltips() {
-        // Инициализация tooltips
-        const elements = document.querySelectorAll('[data-tooltip]');
-        elements.forEach(el => {
-            // Базовая реализация tooltip
-        });
+        // Базовая реализация tooltip
     }
 
     initModals() {
-        // Инициализация модальных окон
-        const modals = document.querySelectorAll('[data-modal]');
-        modals.forEach(modal => {
-            // Базовая реализация модальных окон
-        });
+        // Базовая реализация модальных окон
     }
 
-    // AJAX обработка форм
-    async handleAjaxForm(form) {
-        const formData = new FormData(form);
-        const submitBtn = form.querySelector('[type="submit"]');
-        const originalText = submitBtn.textContent;
-        
-        try {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Обработка...';
-            
-            const response = await fetch(form.action, {
-                method: form.method,
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showNotification(result.message || 'Успешно!', 'success');
-                if (result.redirect) {
-                    window.location.href = result.redirect;
-                }
-            } else {
-                this.showNotification(result.message || 'Ошибка!', 'error');
-            }
-            
-        } catch (error) {
-            this.showNotification('Ошибка сети', 'error');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
+    // Заглушки для методов, которые будут реализованы позже
+    updateConversionPreview() {
+        console.log('Updating conversion preview...');
+    }
+
+    toggleMergeSettings(method) {
+        const joinSection = document.getElementById('joinColumnSection');
+        if (joinSection) {
+            joinSection.classList.toggle('hidden', method !== 'join');
         }
+    }
+
+    toggleSplitSettings(method) {
+        this.currentSplitMethod = method;
+        const rowsSettings = document.getElementById('rowsSettings');
+        const columnSettings = document.getElementById('columnSettings');
+        
+        if (rowsSettings && columnSettings) {
+            rowsSettings.classList.toggle('hidden', method !== 'rows');
+            columnSettings.classList.toggle('hidden', method !== 'column');
+        }
+    }
+
+    switchAnalysisTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('tab-active');
+            btn.classList.add('tab-inactive');
+        });
+        
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        document.querySelector(`[data-tab="${tabName}"]`).classList.remove('tab-inactive');
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('tab-active');
+        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    }
+
+    renderCharts(chartData) {
+        // Заглушка для рендеринга графиков
+        console.log('Rendering charts:', chartData);
+    }
+
+    populateDataTable(tableData) {
+        // Заглушка для заполнения таблицы
+        console.log('Populating data table:', tableData);
     }
 }
 
@@ -356,9 +579,4 @@ window.formatFileSize = (bytes) => {
     return window.TableMaster.formatFileSize(bytes);
 };
 
-window.showNotification = (message, type, duration) => {
-    return window.TableMaster.showNotification(message, type, duration);
-};
-
-// Экспорт для модулей
 export default TableMasterApp;

@@ -40,6 +40,12 @@ class FileController extends Controller
         ]);
 
         if (!Auth::check()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Необходима авторизация'
+                ], 401);
+            }
             return back()->with('error', 'Необходима авторизация');
         }
 
@@ -54,15 +60,34 @@ class FileController extends Controller
 
             $path = $request->file('xls_file')->store($userDirectory, 'local');
 
-            UserFile::create([
+            // Используем UserFile и правильные названия колонок
+            $file = UserFile::create([
                 'user_id' => $user->id,
                 'original_name' => $originalName,
                 'path' => $path,
             ]);
 
+            // Для AJAX-запросов возвращаем JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'id' => $file->id,
+                    'file_id' => $file->id,
+                    'message' => 'File loaded successfully'
+                ]);
+            }
+
             return back()->with('success', 'File loaded successfully');
 
         } catch (\Exception $e) {
+            // Для AJAX-запросов возвращаем JSON с ошибкой
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error while loading file: ' . $e->getMessage()
+                ], 500);
+            }
+
             return back()->with('error', 'Error while loading file: ' . $e->getMessage());
         }
     }
@@ -140,6 +165,40 @@ class FileController extends Controller
             return back()->with('error', 'File not found in database');
         } catch (\Exception $e) {
             return back()->with('error', 'An error occurred while deleting the file: ' . $e->getMessage());
+        }
+    }
+
+    public function uploadForMerge(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:xlsx,xls,csv|max:10240'
+            ]);
+
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            $file = $request->file('file');
+            $filePath = $file->store('uploads', 'local');
+
+            $userFile = $user->excelFiles()->create([
+                'original_name' => $file->getClientOriginalName(),
+                'path' => $filePath,
+                'size' => $file->getSize(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'id' => $userFile->id,
+                'message' => 'File uploaded successfully for merge'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error uploading file for merge: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'File upload failed: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
