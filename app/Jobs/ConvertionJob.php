@@ -14,8 +14,6 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\UserFile;
 use Illuminate\Support\Facades\Log;
 use \PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessTimedOutException;
 
 class ConvertionJob implements ShouldQueue
 {
@@ -817,132 +815,6 @@ class ConvertionJob implements ShouldQueue
         return preg_replace('/[\/:*?"<>|]/', '_', $filename);
     }
 
-    // private function excelToOds(): void
-    // {
-    //     $memoryLimit = ini_get('memory_limit');
-
-    //     $tempFilePath = null;
-    //     $tempOutputPath = null;
-
-    //     try {
-    //         // Получаем содержимое файла
-    //         $fileContent = Storage::disk('local')->get($this->path);
-    //         $this->fileMetaData->update(["status" => "processing"]);
-
-    //         // Создаем временный файл
-    //         $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-    //         file_put_contents($tempFilePath, $fileContent);
-
-    //         ini_set('memory_limit', '512M');
-
-    //         $fileExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
-
-    //         // Настройка читателя
-    //         $reader = ($fileExtension === 'xlsx') ? IOFactory::createReader('Xlsx') : IOFactory::createReader('Xls');
-
-    //         // Загружаем исходный XLSX файл
-    //         $sourceSpreadsheet = $reader->load($tempFilePath);
-
-    //         // Создаем новый XLS документ
-    //         $newSpreadsheet = new Spreadsheet();
-    //         $newSpreadsheet->removeSheetByIndex(0);
-
-    //         // Ограничиваем количество одновременно обрабатываемых листов для больших файлов
-    //         $sheetCount = $sourceSpreadsheet->getSheetCount();
-    //         $processedSheets = 0;
-
-    //         // Обрабатываем каждый лист
-    //         foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
-    //             $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
-    //             $newSpreadsheet->addSheet($newSheet);
-
-    //             // Копируем основные свойства листа
-    //             $this->copySheetProperties($sourceSheet, $newSheet);
-
-    //             // Копируем объединенные ячейки
-    //             $this->copyMergedCells($sourceSheet, $newSheet);
-
-    //             // Копируем размеры столбцов и строк
-    //             $this->copyDimensions($sourceSheet, $newSheet);
-
-    //             // Копируем данные и стили с использованием массового подхода
-    //             $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
-
-    //             $processedSheets++;
-    //             Log::info("Processed sheet {$processedSheets} of {$sheetCount}");
-
-    //             // Освобождаем память после обработки каждого листа
-    //             gc_collect_cycles();
-    //         }
-
-    //         // Создаем временный файл для конвертации
-    //         $tempOutputPath = tempnam(sys_get_temp_dir(), 'converted_') . '.ods';
-
-    //         Log::info('New path', ['path' => $tempOutputPath]);
-
-    //         $writer = IOFactory::createWriter($newSpreadsheet, 'Ods');
-
-    //         Log::info('writer was created');
-
-    //         $writer->save($tempOutputPath);
-
-    //         // Проверяем что файл создан
-    //         if (!file_exists($tempOutputPath)) {
-    //             Log::error('Function excelToOds: Output file does not exist', ['path' => $tempOutputPath]);
-    //             $this->fileMetaData->update(["status" => "failed"]);
-    //             throw new \Exception("Function excelToOds: Output file was not created");
-    //         }
-
-    //         Log::info('проверка, файл создан');
-
-    //         // Сохраняем файл в storage
-    //         $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '.ods';
-    //         $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
-
-    //         // Создаем директорию если не существует
-    //         if (!Storage::disk('local')->exists('converted_files')) {
-    //             Storage::disk('local')->makeDirectory('converted_files');
-    //         }
-
-    //         Log::info('Сохраняем в storage');
-
-    //         // Сохраняем в storage
-    //         Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
-
-    //         // Проверяем что файл сохранен в storage
-    //         if (!Storage::disk('local')->exists($storagePath)) {
-    //             Log::error('Function excelToOds: File not saved to storage', ['path' => $storagePath]);
-    //             $this->fileMetaData->update(["status" => "failed"]);
-    //             throw new \Exception("Function excelToOds: File not saved to storage");
-    //         }
-
-    //         // Обновляем статус и путь
-    //         $this->fileMetaData->update([
-    //             "status" => "completed",
-    //             "output_path" => $storagePath
-    //         ]);
-
-    //         Log::info('Function excelToOds: Conversion completed successfully', [
-    //             'storage_path' => $storagePath,
-    //             'file_size' => Storage::disk('local')->size($storagePath),
-    //             'memory_usage' => memory_get_usage(true)
-    //         ]);
-
-    //         // Освобождаем память
-    //         $sourceSpreadsheet->disconnectWorksheets();
-    //         $newSpreadsheet->disconnectWorksheets();
-    //         unset($sourceSpreadsheet, $newSpreadsheet);
-
-    //     } catch (\Exception $e) {
-    //         $this->fileMetaData->update(["status" => "failed"]);
-    //         Log::error('Function excelToOds: Conversion error: ' . $e->getMessage());
-    //         throw $e;
-    //     } finally {
-    //         // Удаляем временные файлы
-    //         $this->safeCleanup($tempFilePath, $tempOutputPath);
-    //     }
-    // }
-
     private function excelToOds(): void
     {
         $originalMemoryLimit = ini_get('memory_limit');
@@ -950,7 +822,6 @@ class ConvertionJob implements ShouldQueue
         $tempOutputPath = null;
 
         try {
-            // СНАЧАЛА увеличиваем лимит памяти, ПОТОМ загружаем файл
             ini_set('memory_limit', '1024M'); // Увеличиваем до 1GB
             Log::info('Memory limit set to 1GB');
 
@@ -1422,72 +1293,6 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
-    // private function copyCellsWithArrayStyles($sourceSheet, $newSheet): void
-    // {
-    //     $highestRow = $sourceSheet->getHighestDataRow();
-    //     $highestColumn = $sourceSheet->getHighestDataColumn();
-
-    //     // Уменьшаем размер батча для файлов с большим количеством столбцов
-    //     $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
-    //     $batchSize = $highestColumnIndex > 50 ? 25 : 50; // Динамический размер батча
-
-    //     $processedRows = 0;
-
-    //     Log::info('Function copyCellsWithArrayStyles: Starting optimized array-based style copying', [
-    //         'rows' => $highestRow,
-    //         'columns' => $highestColumn,
-    //         'batch_size' => $batchSize,
-    //         'total_cells' => $highestRow * $highestColumnIndex
-    //     ]);
-
-    //     for ($row = 1; $row <= $highestRow; $row += $batchSize) {
-    //         $endRow = min($row + $batchSize - 1, $highestRow);
-
-    //         // Обрабатываем диапазон строк
-    //         for ($currentRow = $row; $currentRow <= $endRow; $currentRow++) {
-    //             $rowData = [];
-
-    //             // Используем числовой индекс для столбцов
-    //             for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
-    //                 $col = Coordinate::stringFromColumnIndex($colIndex);
-    //                 $cellCoordinate = $col . $currentRow;
-
-    //                 $sourceCell = $sourceSheet->getCell($cellCoordinate);
-    //                 $cellValue = $this->getSafeCellValue($sourceCell);
-
-    //                 // Записываем только не-null значения
-    //                 if ($cellValue !== null) {
-    //                     $rowData[$col] = $cellValue;
-    //                 }
-    //             }
-
-    //             // Массовая запись данных строки
-    //             if (!empty($rowData)) {
-    //                 $newSheet->fromArray([$rowData], null, 'A' . $currentRow);
-    //             }
-
-    //             // Применяем стили построчно для экономии памяти
-    //             $this->applyStylesForRow($sourceSheet, $newSheet, $currentRow, $highestColumnIndex);
-
-    //             $processedRows++;
-
-    //             // Освобождаем память чаще
-    //             if ($processedRows % 10 === 0) {
-    //                 unset($rowData);
-    //                 gc_collect_cycles();
-    //             }
-    //         }
-
-    //         Log::debug("Function copyCellsWithArrayStyles: Completed processing rows {$row} to {$endRow}", ['memory_usage' => memory_get_usage(true)]);
-    //         gc_collect_cycles();
-    //     }
-
-    //     Log::info('Function copyCellsWithArrayStyles: Completed optimized array-based style copying', [
-    //         'total_rows' => $processedRows,
-    //         'memory_peak' => memory_get_peak_usage(true)
-    //     ]);
-    // }
-
     private function copyCellsWithArrayStyles($sourceSheet, $newSheet): void
     {
         $highestRow = $sourceSheet->getHighestDataRow();
@@ -1566,26 +1371,6 @@ class ConvertionJob implements ShouldQueue
             }
         }
     }
-
-    // private function getSafeCellValue($cell)
-    // {
-    //     try {
-    //         $value = $cell->getValue();
-
-    //         if (is_array($value)) {
-    //             return isset($value[0]) ? $value[0] : null;
-    //         }
-
-    //         if (is_object($value) && method_exists($value, '__toString')) {
-    //             return $value->__toString();
-    //         }
-
-    //         return $value;
-    //     } catch (\Exception $e) {
-    //         Log::warning("Function getSafeCellValue was finished unsuccessfully: Error getting cell value: " . $e->getMessage());
-    //         return null;
-    //     }
-    // }
 
     private function getSafeCellValue($cell)
     {
@@ -1686,5 +1471,4 @@ class ConvertionJob implements ShouldQueue
             Log::error("Function safeUnlink was finished unsuccessfully: Error deleting file {$path}: " . $e->getMessage());
         }
     }
-
 }
