@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\UserFile;
 use Illuminate\Support\Facades\Log;
 use \PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 
 class ConvertionJob implements ShouldQueue
 {
@@ -815,117 +817,307 @@ class ConvertionJob implements ShouldQueue
         return preg_replace('/[\/:*?"<>|]/', '_', $filename);
     }
 
+    // private function excelToOds(): void
+    // {
+    //     $memoryLimit = ini_get('memory_limit');
+
+    //     $tempFilePath = null;
+    //     $tempOutputPath = null;
+
+    //     try {
+    //         // Получаем содержимое файла
+    //         $fileContent = Storage::disk('local')->get($this->path);
+    //         $this->fileMetaData->update(["status" => "processing"]);
+
+    //         // Создаем временный файл
+    //         $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+    //         file_put_contents($tempFilePath, $fileContent);
+
+    //         ini_set('memory_limit', '512M');
+
+    //         $fileExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
+
+    //         // Настройка читателя
+    //         $reader = ($fileExtension === 'xlsx') ? IOFactory::createReader('Xlsx') : IOFactory::createReader('Xls');
+
+    //         // Загружаем исходный XLSX файл
+    //         $sourceSpreadsheet = $reader->load($tempFilePath);
+
+    //         // Создаем новый XLS документ
+    //         $newSpreadsheet = new Spreadsheet();
+    //         $newSpreadsheet->removeSheetByIndex(0);
+
+    //         // Ограничиваем количество одновременно обрабатываемых листов для больших файлов
+    //         $sheetCount = $sourceSpreadsheet->getSheetCount();
+    //         $processedSheets = 0;
+
+    //         // Обрабатываем каждый лист
+    //         foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
+    //             $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
+    //             $newSpreadsheet->addSheet($newSheet);
+
+    //             // Копируем основные свойства листа
+    //             $this->copySheetProperties($sourceSheet, $newSheet);
+
+    //             // Копируем объединенные ячейки
+    //             $this->copyMergedCells($sourceSheet, $newSheet);
+
+    //             // Копируем размеры столбцов и строк
+    //             $this->copyDimensions($sourceSheet, $newSheet);
+
+    //             // Копируем данные и стили с использованием массового подхода
+    //             $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
+
+    //             $processedSheets++;
+    //             Log::info("Processed sheet {$processedSheets} of {$sheetCount}");
+
+    //             // Освобождаем память после обработки каждого листа
+    //             gc_collect_cycles();
+    //         }
+
+    //         // Создаем временный файл для конвертации
+    //         $tempOutputPath = tempnam(sys_get_temp_dir(), 'converted_') . '.ods';
+
+    //         Log::info('New path', ['path' => $tempOutputPath]);
+
+    //         $writer = IOFactory::createWriter($newSpreadsheet, 'Ods');
+
+    //         Log::info('writer was created');
+
+    //         $writer->save($tempOutputPath);
+
+    //         // Проверяем что файл создан
+    //         if (!file_exists($tempOutputPath)) {
+    //             Log::error('Function excelToOds: Output file does not exist', ['path' => $tempOutputPath]);
+    //             $this->fileMetaData->update(["status" => "failed"]);
+    //             throw new \Exception("Function excelToOds: Output file was not created");
+    //         }
+
+    //         Log::info('проверка, файл создан');
+
+    //         // Сохраняем файл в storage
+    //         $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '.ods';
+    //         $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+
+    //         // Создаем директорию если не существует
+    //         if (!Storage::disk('local')->exists('converted_files')) {
+    //             Storage::disk('local')->makeDirectory('converted_files');
+    //         }
+
+    //         Log::info('Сохраняем в storage');
+
+    //         // Сохраняем в storage
+    //         Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
+
+    //         // Проверяем что файл сохранен в storage
+    //         if (!Storage::disk('local')->exists($storagePath)) {
+    //             Log::error('Function excelToOds: File not saved to storage', ['path' => $storagePath]);
+    //             $this->fileMetaData->update(["status" => "failed"]);
+    //             throw new \Exception("Function excelToOds: File not saved to storage");
+    //         }
+
+    //         // Обновляем статус и путь
+    //         $this->fileMetaData->update([
+    //             "status" => "completed",
+    //             "output_path" => $storagePath
+    //         ]);
+
+    //         Log::info('Function excelToOds: Conversion completed successfully', [
+    //             'storage_path' => $storagePath,
+    //             'file_size' => Storage::disk('local')->size($storagePath),
+    //             'memory_usage' => memory_get_usage(true)
+    //         ]);
+
+    //         // Освобождаем память
+    //         $sourceSpreadsheet->disconnectWorksheets();
+    //         $newSpreadsheet->disconnectWorksheets();
+    //         unset($sourceSpreadsheet, $newSpreadsheet);
+
+    //     } catch (\Exception $e) {
+    //         $this->fileMetaData->update(["status" => "failed"]);
+    //         Log::error('Function excelToOds: Conversion error: ' . $e->getMessage());
+    //         throw $e;
+    //     } finally {
+    //         // Удаляем временные файлы
+    //         $this->safeCleanup($tempFilePath, $tempOutputPath);
+    //     }
+    // }
+
     private function excelToOds(): void
     {
-        // Получаем содержимое файла
-        $fileContent = Storage::disk('local')->get($this->path);
-        $this->fileMetaData->update(["status" => "processing"]);
-
-        // Создаем временный файл
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
-
+        $originalMemoryLimit = ini_get('memory_limit');
+        $tempFilePath = null;
         $tempOutputPath = null;
 
         try {
-            // Определяем ридер по расширению файла
+            // СНАЧАЛА увеличиваем лимит памяти, ПОТОМ загружаем файл
+            ini_set('memory_limit', '1024M'); // Увеличиваем до 1GB
+            Log::info('Memory limit set to 1GB');
+
+            // Получаем содержимое файла
+            $fileContent = Storage::disk('local')->get($this->path);
+            $this->fileMetaData->update(["status" => "processing"]);
+
+            // Создаем временный файл
+            $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+            file_put_contents($tempFilePath, $fileContent);
+
             $fileExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
 
+            // Настройка читателя с оптимизацией памяти
             $reader = ($fileExtension === 'xlsx') ? IOFactory::createReader('Xlsx') : IOFactory::createReader('Xls');
 
+            // ВКЛЮЧАЕМ оптимизацию памяти для читателя
+            if (method_exists($reader, 'setReadDataOnly')) {
+                $reader->setReadDataOnly(false); // Но нам нужны стили, поэтому false
+            }
 
-            // Загружаем исходный файл
+            if (method_exists($reader, 'setReadEmptyCells')) {
+                $reader->setReadEmptyCells(false);
+            }
+
+            Log::info('Loading source spreadsheet...');
             $sourceSpreadsheet = $reader->load($tempFilePath);
+            Log::info('Source spreadsheet loaded', [
+                'memory_usage' => memory_get_usage(true),
+                'peak_usage' => memory_get_peak_usage(true)
+            ]);
 
-            // Создаем новый ODS документ
+            // ОСВОБОЖДАЕМ ПАМЯТЬ сразу после загрузки
+            unset($fileContent);
+            gc_collect_cycles();
+
+            // Создаем новый документ
             $newSpreadsheet = new Spreadsheet();
             $newSpreadsheet->removeSheetByIndex(0);
 
+            $sheetCount = $sourceSpreadsheet->getSheetCount();
+            $processedSheets = 0;
+
+            Log::info('Starting sheet processing', [
+                'total_sheets' => $sheetCount,
+                'file_size' => filesize($tempFilePath),
+                'current_memory' => memory_get_usage(true)
+            ]);
+
+            // Обрабатываем каждый лист с оптимизацией памяти
             foreach ($sourceSpreadsheet->getAllSheets() as $sourceSheet) {
-                // Создаем лист в новом документе
                 $newSheet = new Worksheet($newSpreadsheet, $sourceSheet->getTitle());
                 $newSpreadsheet->addSheet($newSheet);
 
-                // Копируем основные свойства листа
+                Log::info("Processing sheet: {$sourceSheet->getTitle()}", [
+                    'memory_before' => memory_get_usage(true)
+                ]);
+
+                // Копируем только самое необходимое
                 $this->copySheetProperties($sourceSheet, $newSheet);
-
-                // Копируем объединенные ячейки
                 $this->copyMergedCells($sourceSheet, $newSheet);
-
-                // Копируем размеры столбцов и строк
                 $this->copyDimensions($sourceSheet, $newSheet);
 
-                // Копируем данные и стили
+                // Оптимизированное копирование ячеек
                 $this->copyCellsWithArrayStyles($sourceSheet, $newSheet);
 
-                // Освобождаем память после обработки каждого листа
+                $processedSheets++;
+
+                Log::info("Processed sheet {$processedSheets} of {$sheetCount}", [
+                    'memory_after' => memory_get_usage(true)
+                ]);
+
+                // Агрессивная очистка памяти после каждого листа
                 gc_collect_cycles();
             }
 
+            // ОСВОБОЖДАЕМ ПАМЯТЬ исходного документа
+            $sourceSpreadsheet->disconnectWorksheets();
+            unset($sourceSpreadsheet);
+            gc_collect_cycles();
+
+            Log::info('All sheets processed, starting ODS conversion', [
+                'memory_before_conversion' => memory_get_usage(true)
+            ]);
+
             // Создаем временный файл для конвертации
-            $tempOutputPath = tempnam(sys_get_temp_dir(), 'converted_ods_') . '.ods';
+            $tempOutputPath = tempnam(sys_get_temp_dir(), 'converted_') . '.ods';
+
+            // Устанавливаем таймаут и увеличиваем память для writer
+            set_time_limit(300); // 5 минут
 
             $writer = IOFactory::createWriter($newSpreadsheet, 'Ods');
-            $writer->save($tempOutputPath);
 
-            Log::info('ODS file created', ['path' => $tempOutputPath, 'size' => filesize($tempOutputPath)]);
-
-            // Проверяем что временный файл создан
-            if (!file_exists($tempOutputPath)) {
-                Log::error('Function excelToOds: Temporary output file does not exist', ['path' => $tempOutputPath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function excelToOds: Temporary output file was not created");
+            // Оптимизации для writer если доступны
+            if (method_exists($writer, 'setPreCalculateFormulas')) {
+                $writer->setPreCalculateFormulas(false);
             }
+
+            Log::info('Starting ODS file save...');
+            $writer->save($tempOutputPath);
+            Log::info('ODS file saved successfully');
+
+            // ОСВОБОЖДАЕМ ПАМЯТЬ сразу после сохранения
+            $newSpreadsheet->disconnectWorksheets();
+            unset($newSpreadsheet, $writer);
+            gc_collect_cycles();
+
+            // Проверяем что файл создан
+            if (!file_exists($tempOutputPath)) {
+                throw new \Exception("ODS output file was not created");
+            }
+
+            Log::info('ODS file verified', [
+                'file_size' => filesize($tempOutputPath),
+                'memory_after_save' => memory_get_usage(true)
+            ]);
 
             // Сохраняем файл в storage
             $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '.ods';
             $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
 
-            // Создаем директорию если не существует
             if (!Storage::disk('local')->exists('converted_files')) {
                 Storage::disk('local')->makeDirectory('converted_files');
             }
 
-            // Сохраняем в storage
-            Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
+            // Читаем и сохраняем частями если файл большой
+            $outputContent = file_get_contents($tempOutputPath);
+            Storage::disk('local')->put($storagePath, $outputContent);
+            unset($outputContent); // Освобождаем память
 
-            // Проверяем что файл сохранен в storage
             if (!Storage::disk('local')->exists($storagePath)) {
-                Log::error('Function excelToOds: File not saved to storage', ['path' => $storagePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function excelToOds: File not saved to storage");
+                throw new \Exception("File not saved to storage");
             }
 
-            $fileSize = Storage::disk('local')->size($storagePath);
-            Log::info('Function excelToOds: File saved to storage', [
-                'storage_path' => $storagePath,
-                'file_size' => $fileSize
-            ]);
-
-            // Обновляем статус и путь
+            // Обновляем статус
             $this->fileMetaData->update([
                 "status" => "completed",
-                "output_path" => $storagePath  // Сохраняем относительный путь storage
+                "output_path" => $storagePath
             ]);
 
             Log::info('Function excelToOds: Conversion completed successfully', [
-                'file_id' => $this->fileMetaData->id,
-                'original_file' => $this->original_name,
-                'output_file' => $storagePath
+                'storage_path' => $storagePath,
+                'file_size' => Storage::disk('local')->size($storagePath),
+                'final_memory' => memory_get_usage(true),
+                'peak_memory' => memory_get_peak_usage(true)
             ]);
-
-            // Освобождаем память
-            $sourceSpreadsheet->disconnectWorksheets();
-            $newSpreadsheet->disconnectWorksheets();
-            unset($sourceSpreadsheet, $newSpreadsheet);
 
         } catch (\Exception $e) {
             $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Function excelToOds: Conversion error: ' . $e->getMessage());
+            Log::error('Function excelToOds: Conversion error: ' . $e->getMessage(), [
+                'memory_at_error' => memory_get_usage(true),
+                'peak_memory' => memory_get_peak_usage(true)
+            ]);
             throw $e;
         } finally {
+            // Восстанавливаем оригинальный лимит памяти
+            if ($originalMemoryLimit) {
+                ini_set('memory_limit', $originalMemoryLimit);
+            }
+            set_time_limit(0); // Сбрасываем таймаут
+
             // Удаляем временные файлы
-            $this->safeCleanup($tempFilePath, $tempOutputPath);
+            $this->safeUnlink($tempFilePath);
+            $this->safeUnlink($tempOutputPath);
+
+            // Финальная очистка памяти
+            gc_collect_cycles();
         }
     }
 
