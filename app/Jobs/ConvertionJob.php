@@ -83,146 +83,731 @@ class ConvertionJob implements ShouldQueue
         }
     }
 
-    private function merge(): void
+    // private function merge(): void
+    // {
+    //     $originalMemoryLimit = ini_get('memory_limit');
+    //     $tempFilePath = null;
+    //     $tempOutputPath = null;
+
+    //     try {
+    //         ini_set('memory_limit', '1024M');
+
+    //         // Проверяем, что путь к файлу для слияния существует
+    //         if (empty($this->mergedFilePath) || !Storage::disk('local')->exists($this->mergedFilePath)) {
+    //             $this->fileMetaData->update(["status" => "failed"]);
+    //             throw new \Exception("Merge file not found or path is empty");
+    //         }
+
+    //         $fileContent = Storage::disk('local')->get($this->path);
+    //         $this->fileMetaData->update(["status" => "processing"]);
+
+    //         // Получаем расширения файлов
+    //         $sourceExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
+    //         $mergeExtension = strtolower(pathinfo($this->mergedFilePath, PATHINFO_EXTENSION));
+
+    //         $tempFilePath = tempnam(sys_get_temp_dir(), 'merge_source_') . '.' . $sourceExtension;
+    //         file_put_contents($tempFilePath, $fileContent);
+
+    //         // Получаем содержимое файла для слияния, второй файл
+    //         $mergeFileContent = Storage::disk('local')->get($this->mergedFilePath);
+    //         $mergeTempFilePath = tempnam(sys_get_temp_dir(), 'merge_target_') . '.' . $mergeExtension;
+    //         file_put_contents($mergeTempFilePath, $mergeFileContent);
+
+    //         unset($fileContent);
+
+    //         Log::info('Merge: Temp files created', [
+    //             'source' => $tempFilePath,
+    //             'merge' => $mergeTempFilePath,
+    //             'source_extension' => $sourceExtension,
+    //             'merge_extension' => $mergeExtension,
+    //         ]);
+
+    //         $sourceReader = ($sourceExtension === "xlsx") ?
+    //             IOFactory::createReader('Xlsx') :
+    //             IOFactory::createReader('Xls');
+
+    //         $mergeReader = ($mergeExtension === "xlsx") ?
+    //             IOFactory::createReader('Xlsx') :
+    //             IOFactory::createReader('Xls');
+
+    //         Log::info('Readers was created');
+
+    //         // Загружаем оба файла
+    //         $sourceSpreadsheet = $sourceReader->load($tempFilePath);
+    //         $mergeSpreadsheet = $mergeReader->load($mergeTempFilePath);
+
+    //         Log::info('Merge: Files loaded', [
+    //             'source_sheets' => $sourceSpreadsheet->getSheetCount(),
+    //             'merge_sheets' => $mergeSpreadsheet->getSheetCount()
+    //         ]);
+
+    //         // Копируем все листы из файла для слияния в исходный файл
+    //         foreach ($mergeSpreadsheet->getAllSheets() as $mergeSheet) {
+    //             $sheetName = $this->getUniqueSheetName($sourceSpreadsheet, $mergeSheet->getTitle());
+
+    //             Log::info('Merge: Copying sheet', [
+    //                 'original_name' => $mergeSheet->getTitle(),
+    //                 'new_name' => $sheetName
+    //             ]);
+
+    //             // Создаем новый лист в исходном файле
+    //             $newSheet = new Worksheet($sourceSpreadsheet, $sheetName);
+    //             $sourceSpreadsheet->addSheet($newSheet);
+
+    //             // Копируем содержимое
+    //             $this->copySheetProperties($mergeSheet, $newSheet);
+    //             $this->copyMergedCells($mergeSheet, $newSheet);
+    //             $this->copyDimensions($mergeSheet, $newSheet);
+    //             $this->copyCellsWithArrayStyles($mergeSheet, $newSheet);
+
+    //             gc_collect_cycles();
+    //         }
+
+    //         // Сохраняем объединенный файл во временный файл
+    //         $outputExtension = $sourceExtension; // Сохраняем в формате исходного файла
+    //         $tempOutputPath = tempnam(sys_get_temp_dir(), 'merge_output_') . '.' . $outputExtension;
+
+    //         $outputWriter = ($outputExtension === "xlsx") ?
+    //             IOFactory::createWriter($sourceSpreadsheet, 'Xlsx') :
+    //             IOFactory::createWriter($sourceSpreadsheet, 'Xls');
+
+    //         $sourceSpreadsheet->disconnectWorksheets();
+    //         $mergeSpreadsheet->disconnectWorksheets();
+    //         unset($sourceSpreadsheet, $mergeSpreadsheet);
+    //         gc_collect_cycles();
+
+    //         $outputWriter->save($tempOutputPath);
+
+    //         unset($outputWriter);
+
+    //         // Сохраняем в storage
+    //         $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_merged_' . uniqid() . '.' . $outputExtension;
+    //         $storagePath = 'converted_files/' . $outputFileName;
+
+    //         // Создаем директорию если не существует
+    //         if (!Storage::disk('local')->exists('converted_files')) {
+    //             Storage::disk('local')->makeDirectory('converted_files');
+    //         }
+
+    //         // Сохраняем в Storage
+    //         Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
+
+    //         // Проверяем что файл сохранен в storage
+    //         if (!Storage::disk('local')->exists($storagePath)) {
+    //             Log::error('Function merge: File not saved to storage', ['path' => $storagePath]);
+    //             $this->fileMetaData->update(["status" => "failed"]);
+    //             throw new \Exception("Function merge: File not saved to storage");
+    //         }
+
+    //         $fileSize = Storage::disk('local')->size($storagePath);
+    //         Log::info('Function merge: File saved to storage', [
+    //             'storage_path' => $storagePath,
+    //             'file_size' => $fileSize
+    //         ]);
+
+    //         // Обновляем статус
+    //         $this->fileMetaData->update([
+    //             "status" => "completed",
+    //             "output_path" => $storagePath // Сохраняем относительный путь
+    //         ]);
+
+    //         Log::info('Merge: Operation completed successfully', [
+    //             'merged_file_name' => $outputFileName,
+    //             'output_path' => $storagePath,
+    //             //'total_sheets' => $sourceSpreadsheet->getSheetCount()
+    //         ]);
+
+    //         // Освобождаем память
+    //         // $sourceSpreadsheet->disconnectWorksheets();
+    //         // $mergeSpreadsheet->disconnectWorksheets();
+    //         // unset($sourceSpreadsheet, $mergeSpreadsheet);
+
+    //     } catch (\Exception $e) {
+    //         $this->fileMetaData->update(["status" => "failed"]);
+    //         Log::error('Merge: Error: ' . $e->getMessage());
+    //         throw $e;
+    //     } finally {
+    //         if ($originalMemoryLimit) {
+    //             ini_set('memory_limit', $originalMemoryLimit);
+    //         }
+    //         //$this->safeCleanup($tempFilePath, $mergeTempFilePath, $tempOutputPath);
+    //         $this->safeUnlink($tempFilePath);
+    //         $this->safeUnlink($mergeTempFilePath);
+    //         $this->safeUnlink($tempOutputPath);
+
+    //         // Удаляем временный merge файл из storage (если он был загружен)
+    //         if (!empty($this->mergedFilePath) && Storage::disk('local')->exists($this->mergedFilePath)) {
+    //             try {
+    //                 Storage::disk('local')->delete($this->mergedFilePath);
+    //             } catch (\Exception $e) {
+    //                 Log::warning('Failed to delete merge file from storage: ' . $e->getMessage());
+    //             }
+    //         }
+    //         gc_collect_cycles();
+    //     }
+    // }
+
+
+    // /**
+    //  * Очистка spreadsheet объектов
+    //  */
+    private function cleanupSpreadsheets(array $spreadsheets): void
     {
-        // Проверяем, что путь к файлу для слияния существует
-        if (empty($this->mergedFilePath) || !Storage::disk('local')->exists($this->mergedFilePath)) {
-            $this->fileMetaData->update(["status" => "failed"]);
-            throw new \Exception("Merge file not found or path is empty");
-        }
-
-        $fileContent = Storage::disk('local')->get($this->path);
-        $this->fileMetaData->update(["status" => "processing"]);
-
-        // Получаем расширения файлов
-        $sourceExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
-        $mergeExtension = strtolower(pathinfo($this->mergedFilePath, PATHINFO_EXTENSION));
-
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'merge_source_') . '.' . $sourceExtension;
-        file_put_contents($tempFilePath, $fileContent);
-
-        try {
-            // Получаем содержимое файла для слияния, второй файл
-            $mergeFileContent = Storage::disk('local')->get($this->mergedFilePath);
-            $mergeTempFilePath = tempnam(sys_get_temp_dir(), 'merge_target_') . '.' . $mergeExtension;
-            file_put_contents($mergeTempFilePath, $mergeFileContent);
-
-            Log::info('Merge: Temp files created', [
-                'source' => $tempFilePath,
-                'merge' => $mergeTempFilePath,
-                'source_extension' => $sourceExtension,
-                'merge_extension' => $mergeExtension,
-            ]);
-
-            $sourceReader = ($sourceExtension === "xlsx") ?
-                IOFactory::createReader('Xlsx') :
-                IOFactory::createReader('Xls');
-
-            $mergeReader = ($mergeExtension === "xlsx") ?
-                IOFactory::createReader('Xlsx') :
-                IOFactory::createReader('Xls');
-
-            Log::info('Readers was created');
-
-            // Загружаем оба файла
-            $sourceSpreadsheet = $sourceReader->load($tempFilePath);
-            $mergeSpreadsheet = $mergeReader->load($mergeTempFilePath);
-
-            Log::info('Merge: Files loaded', [
-                'source_sheets' => $sourceSpreadsheet->getSheetCount(),
-                'merge_sheets' => $mergeSpreadsheet->getSheetCount()
-            ]);
-
-            // Копируем все листы из файла для слияния в исходный файл
-            foreach ($mergeSpreadsheet->getAllSheets() as $mergeSheet) {
-                $sheetName = $this->getUniqueSheetName($sourceSpreadsheet, $mergeSheet->getTitle());
-
-                Log::info('Merge: Copying sheet', [
-                    'original_name' => $mergeSheet->getTitle(),
-                    'new_name' => $sheetName
-                ]);
-
-                // Создаем новый лист в исходном файле
-                $newSheet = new Worksheet($sourceSpreadsheet, $sheetName);
-                $sourceSpreadsheet->addSheet($newSheet);
-
-                // Копируем содержимое
-                $this->copySheetProperties($mergeSheet, $newSheet);
-                $this->copyMergedCells($mergeSheet, $newSheet);
-                $this->copyDimensions($mergeSheet, $newSheet);
-                $this->copyCellsWithArrayStyles($mergeSheet, $newSheet);
-
-                gc_collect_cycles();
-            }
-
-            // Сохраняем объединенный файл во временный файл
-            $outputExtension = $sourceExtension; // Сохраняем в формате исходного файла
-            $tempOutputPath = tempnam(sys_get_temp_dir(), 'merge_output_') . '.' . $outputExtension;
-
-            $outputWriter = ($outputExtension === "xlsx") ?
-                IOFactory::createWriter($sourceSpreadsheet, 'Xlsx') :
-                IOFactory::createWriter($sourceSpreadsheet, 'Xls');
-
-            $outputWriter->save($tempOutputPath);
-
-            // Сохраняем в storage
-            $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_merged_' . uniqid() . '.' . $outputExtension;
-            $storagePath = 'converted_files/' . $outputFileName;
-
-            // Создаем директорию если не существует
-            if (!Storage::disk('local')->exists('converted_files')) {
-                Storage::disk('local')->makeDirectory('converted_files');
-            }
-
-            // Сохраняем в Storage
-            Storage::disk('local')->put($storagePath, file_get_contents($tempOutputPath));
-
-            // Проверяем что файл сохранен в storage
-            if (!Storage::disk('local')->exists($storagePath)) {
-                Log::error('Function merge: File not saved to storage', ['path' => $storagePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function merge: File not saved to storage");
-            }
-
-            $fileSize = Storage::disk('local')->size($storagePath);
-            Log::info('Function merge: File saved to storage', [
-                'storage_path' => $storagePath,
-                'file_size' => $fileSize
-            ]);
-
-            // Обновляем статус
-            $this->fileMetaData->update([
-                "status" => "completed",
-                "output_path" => $storagePath // Сохраняем относительный путь
-            ]);
-
-            Log::info('Merge: Operation completed successfully', [
-                'merged_file_name' => $outputFileName,
-                'output_path' => $storagePath,
-                'total_sheets' => $sourceSpreadsheet->getSheetCount()
-            ]);
-
-            // Освобождаем память
-            $sourceSpreadsheet->disconnectWorksheets();
-            $mergeSpreadsheet->disconnectWorksheets();
-            unset($sourceSpreadsheet, $mergeSpreadsheet);
-
-        } catch (\Exception $e) {
-            $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Merge: Error: ' . $e->getMessage());
-            throw $e;
-        } finally {
-            $this->safeCleanup($tempFilePath, $mergeTempFilePath, $tempOutputPath);
-
-            // Удаляем временный merge файл из storage (если он был загружен)
-            if (!empty($this->mergedFilePath) && Storage::disk('local')->exists($this->mergedFilePath)) {
+        foreach ($spreadsheets as $spreadsheet) {
+            if ($spreadsheet instanceof Spreadsheet) {
                 try {
-                    Storage::disk('local')->delete($this->mergedFilePath);
+                    $spreadsheet->disconnectWorksheets();
+                    unset($spreadsheet);
                 } catch (\Exception $e) {
-                    Log::warning('Failed to delete merge file from storage: ' . $e->getMessage());
+                    Log::warning('Error cleaning up spreadsheet: ' . $e->getMessage());
                 }
             }
         }
+    }
+
+    // /**
+    //  * Очистка временных файлов
+    //  */
+    private function cleanupTempFiles(array $files): void
+    {
+        foreach ($files as $type => $file) {
+            if ($file && file_exists($file)) {
+                $this->safeUnlink($file);
+                Log::debug('Temp file deleted', ['type' => $type, 'file' => $file]);
+            }
+        }
+    }
+
+    // /**
+    //  * Очистка merge файла из storage
+    //  */
+    private function cleanupMergeFile(): void
+    {
+        if (!empty($this->mergedFilePath) && Storage::disk('local')->exists($this->mergedFilePath)) {
+            try {
+                Storage::disk('local')->delete($this->mergedFilePath);
+                Log::info('Merge file deleted from storage', ['path' => $this->mergedFilePath]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to delete merge file from storage: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // /**
+    //  * Умная сборка мусора
+    //  */
+    private function forceGarbageCollection(): void
+    {
+        $currentUsage = memory_get_usage(true);
+
+        // Собираем мусор только если использование памяти превышает 50MB
+        if ($currentUsage > 50 * 1024 * 1024) {
+            $cycles = gc_collect_cycles();
+            Log::debug('Garbage collection performed', [
+                'cycles_collected' => $cycles,
+                'memory_before' => $currentUsage,
+                'memory_after' => memory_get_usage(true)
+            ]);
+        }
+    }
+
+    // /**
+    //  * Создание директории converted_files
+    //  */
+    private function ensureConvertedFilesDirectory(): void
+    {
+        if (!Storage::disk('local')->exists('converted_files')) {
+            Storage::disk('local')->makeDirectory('converted_files');
+        }
+    }
+
+    // /**
+    //  * Обновление статуса обработки
+    //  */
+    private function markAsProcessing(): void
+    {
+        $this->fileMetaData->update(["status" => "processing"]);
+        Log::info('Merge: Status updated to processing');
+    }
+
+    // /**
+    //  * Обновление статуса завершения
+    //  */
+    private function markAsCompleted(string $outputPath): void
+    {
+        $this->fileMetaData->update([
+            "status" => "completed",
+            "output_path" => $outputPath
+        ]);
+        Log::info('Merge: Status updated to completed', ['output_path' => $outputPath]);
+    }
+
+    // /**
+    //  * Обновление статуса ошибки
+    //  */
+    private function markAsFailed(string $message): void
+    {
+        $this->fileMetaData->update(["status" => "failed"]);
+        Log::error('Merge: Status updated to failed', ['reason' => $message]);
+    }
+
+    private function merge(): void
+    {
+        $originalMemoryLimit = ini_get('memory_limit');
+        $tempFiles = [];
+        $sourceSpreadsheet = null;
+        $mergeSpreadsheet = null;
+
+        try {
+            // Безопасное управление памятью
+            $this->setMemoryLimitSafely('1024M');
+
+            // Проверяем файл для слияния
+            if (empty($this->mergedFilePath) || !Storage::disk('local')->exists($this->mergedFilePath)) {
+                $this->markAsFailed("Merge file not found or path is empty");
+                throw new \Exception("Merge file not found or path is empty");
+            }
+
+            $this->markAsProcessing();
+
+            Log::info('Merge: Starting merge operation', [
+                'source_file' => $this->path,
+                'merge_file' => $this->mergedFilePath
+            ]);
+
+            // Создаем временные файлы с оптимизацией памяти
+            $tempFiles['source'] = $this->createTempFileFromStorage($this->path, 'merge_source_');
+            $tempFiles['merge'] = $this->createTempFileFromStorage($this->mergedFilePath, 'merge_target_');
+
+            Log::info('Merge: Temp files created', [
+                'source' => $tempFiles['source'],
+                'merge' => $tempFiles['merge'],
+                'memory_usage' => memory_get_usage(true)
+            ]);
+
+            // Загружаем файлы с оптимизированными настройками
+            $sourceSpreadsheet = $this->loadSpreadsheetOptimized($tempFiles['source']);
+            $mergeSpreadsheet = $this->loadSpreadsheetOptimized($tempFiles['merge']);
+
+            Log::info('Merge: Files loaded successfully', [
+                'source_sheets' => $sourceSpreadsheet->getSheetCount(),
+                'merge_sheets' => $mergeSpreadsheet->getSheetCount(),
+                'memory_usage' => memory_get_usage(true)
+            ]);
+
+            // Оптимизированное копирование листов
+            $this->copySheetsWithMemoryManagement($mergeSpreadsheet, $sourceSpreadsheet);
+
+            Log::info('Merge: Sheets copied successfully', [
+                'memory_usage' => memory_get_usage(true)
+            ]);
+
+            // Сохраняем результат с оптимизацией
+            $storagePath = $this->saveMergedResult($sourceSpreadsheet);
+
+            $this->markAsCompleted($storagePath);
+
+            Log::info('Merge: Operation completed successfully', [
+                'output_path' => $storagePath,
+                'file_size' => Storage::disk('local')->size($storagePath),
+                'final_memory' => memory_get_usage(true),
+                'peak_memory' => memory_get_peak_usage(true)
+            ]);
+
+        } catch (\Exception $e) {
+            $this->markAsFailed($e->getMessage());
+            Log::error('Merge: Error: ' . $e->getMessage(), [
+                'memory_at_error' => memory_get_usage(true),
+                'peak_memory' => memory_get_peak_usage(true)
+            ]);
+            throw $e;
+        } finally {
+            // Приоритетная очистка памяти
+            $this->cleanupSpreadsheets([$sourceSpreadsheet, $mergeSpreadsheet]);
+            $this->restoreMemoryLimitSafely($originalMemoryLimit);
+            $this->cleanupTempFiles($tempFiles);
+            $this->cleanupMergeFile();
+            $this->forceGarbageCollection();
+        }
+    }
+
+    /**
+     * Оптимизированное копирование ячеек и стилей ВСЕХ ячеек в диапазоне
+     */
+    private function copyCellsAndStylesOptimized(Worksheet $sourceSheet, Worksheet $targetSheet): void
+    {
+        // Используем getHighestRow() и getHighestColumn() вместо getHighestDataRow/Column
+        // чтобы охватить ВСЕ ячейки, включая те, что имеют только стили
+        $highestRow = $sourceSheet->getHighestRow();
+        $highestColumn = $sourceSheet->getHighestColumn();
+        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+
+        Log::info('Starting complete cell and style copying', [
+            'rows' => $highestRow,
+            'columns' => $highestColumn,
+            'total_cells' => $highestRow * $highestColumnIndex
+        ]);
+
+        // Определяем оптимальный размер батча
+        $batchSize = $this->calculateOptimalBatchSize($highestRow * $highestColumnIndex);
+        $processedRows = 0;
+
+        for ($row = 1; $row <= $highestRow; $row += $batchSize) {
+            $endRow = min($row + $batchSize - 1, $highestRow);
+
+            // Обрабатываем батч строк - копируем и данные, и стили для ВСЕХ ячеек
+            $this->processCompleteRowBatch($sourceSheet, $targetSheet, $row, $endRow, $highestColumnIndex);
+
+            $processedRows += ($endRow - $row + 1);
+
+            Log::debug('Processed complete row batch', [
+                'rows' => "$row-$endRow",
+                'total_processed' => $processedRows,
+                'memory_usage' => memory_get_usage(true)
+            ]);
+
+            // Очистка памяти после каждого батча
+            $this->forceGarbageCollection();
+        }
+
+        Log::info('Complete cell and style copying finished', [
+            'total_rows_processed' => $processedRows
+        ]);
+    }
+
+    /**
+     * Обработка батча строк с копированием ВСЕХ ячеек и их стилей
+     */
+    private function processCompleteRowBatch(Worksheet $sourceSheet, Worksheet $targetSheet, int $startRow, int $endRow, int $highestColumnIndex): void
+    {
+        for ($currentRow = $startRow; $currentRow <= $endRow; $currentRow++) {
+            $rowData = [];
+            $rowHasData = false;
+
+            // Собираем данные для всей строки
+            for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
+                $col = Coordinate::stringFromColumnIndex($colIndex);
+                $cellCoordinate = $col . $currentRow;
+
+                $sourceCell = $sourceSheet->getCell($cellCoordinate);
+                $cellValue = $this->getSafeCellValue($sourceCell);
+
+                $rowData[] = $cellValue === null ? '' : $cellValue;
+
+                // Проверяем, есть ли в строке хотя бы одна непустая ячейка
+                if (!$rowHasData && $cellValue !== null && $cellValue !== '') {
+                    $rowHasData = true;
+                }
+            }
+
+            // Записываем данные строки (даже если строка полностью пустая)
+            // Это важно для сохранения форматирования пустых ячеек
+            $targetSheet->fromArray($rowData, null, 'A' . $currentRow);
+
+            // Копируем стили для ВСЕХ ячеек в строке
+            $this->copyAllStylesForRow($sourceSheet, $targetSheet, $currentRow, $highestColumnIndex);
+
+            unset($rowData);
+        }
+    }
+
+    /**
+     * Копирование стилей для ВСЕХ ячеек в строке (включая пустые)
+     */
+    private function copyAllStylesForRow(Worksheet $sourceSheet, Worksheet $targetSheet, int $rowNumber, int $highestColumnIndex): void
+    {
+        for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
+            $col = Coordinate::stringFromColumnIndex($colIndex);
+            $cellCoordinate = $col . $rowNumber;
+
+            $sourceCell = $sourceSheet->getCell($cellCoordinate);
+
+            // Копируем стили для ЛЮБОЙ ячейки, независимо от содержимого
+            try {
+                $styleArray = $sourceCell->getStyle()->exportArray();
+
+                // Применяем стиль только если массив стилей не пустой
+                if (!empty(array_filter($styleArray))) {
+                    $targetSheet->getStyle($cellCoordinate)->applyFromArray($styleArray);
+                }
+
+                unset($styleArray);
+            } catch (\Exception $e) {
+                Log::warning('Style copy error for cell ' . $cellCoordinate . ': ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Улучшенное копирование содержимого листа с полным сохранением стилей
+     */
+    private function copySheetContentOptimized(Worksheet $sourceSheet, Worksheet $targetSheet): void
+    {
+        try {
+            // 1. Копируем основные свойства листа
+            $this->copySheetProperties($sourceSheet, $targetSheet);
+
+            // 2. Копируем объединенные ячейки
+            $this->copyMergedCells($sourceSheet, $targetSheet);
+
+            // 3. Копируем размеры столбцов и строк
+            $this->copyDimensions($sourceSheet, $targetSheet);
+
+            // 4. Копируем ВСЕ ячейки и их стили в полном диапазоне
+            $this->copyCellsAndStylesOptimized($sourceSheet, $targetSheet);
+
+            // 5. Копируем дополнительные свойства, которые могли быть пропущены
+            $this->copyAdditionalSheetProperties($sourceSheet, $targetSheet);
+
+        } catch (\Exception $e) {
+            Log::error('Error copying sheet content: ' . $e->getMessage(), [
+                'source_sheet' => $sourceSheet->getTitle()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Копирование дополнительных свойств листа
+     */
+    private function copyAdditionalSheetProperties(Worksheet $sourceSheet, Worksheet $targetSheet): void
+    {
+        try {
+            // Копируем настройки закрепления областей
+            if ($sourceSheet->getFreezePane()) {
+                $targetSheet->freezePane($sourceSheet->getFreezePane());
+            }
+
+            // Копируем настройки защиты листа
+            $targetSheet->getProtection()->setPassword($sourceSheet->getProtection()->getPassword());
+            $targetSheet->getProtection()->setObjects($sourceSheet->getProtection()->getObjects());
+            $targetSheet->getProtection()->setScenarios($sourceSheet->getProtection()->getScenarios());
+            $targetSheet->getProtection()->setFormatCells($sourceSheet->getProtection()->getFormatCells());
+            $targetSheet->getProtection()->setFormatColumns($sourceSheet->getProtection()->getFormatColumns());
+            $targetSheet->getProtection()->setFormatRows($sourceSheet->getProtection()->getFormatRows());
+            $targetSheet->getProtection()->setInsertColumns($sourceSheet->getProtection()->getInsertColumns());
+            $targetSheet->getProtection()->setInsertRows($sourceSheet->getProtection()->getInsertRows());
+            $targetSheet->getProtection()->setInsertHyperlinks($sourceSheet->getProtection()->getInsertHyperlinks());
+            $targetSheet->getProtection()->setDeleteColumns($sourceSheet->getProtection()->getDeleteColumns());
+            $targetSheet->getProtection()->setDeleteRows($sourceSheet->getProtection()->getDeleteRows());
+            $targetSheet->getProtection()->setSelectLockedCells($sourceSheet->getProtection()->getSelectLockedCells());
+            $targetSheet->getProtection()->setSort($sourceSheet->getProtection()->getSort());
+            $targetSheet->getProtection()->setAutoFilter($sourceSheet->getProtection()->getAutoFilter());
+            $targetSheet->getProtection()->setPivotTables($sourceSheet->getProtection()->getPivotTables());
+            $targetSheet->getProtection()->setSelectUnlockedCells($sourceSheet->getProtection()->getSelectUnlockedCells());
+
+        } catch (\Exception $e) {
+            Log::warning('Error copying additional sheet properties: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Безопасное управление памятью
+     */
+    private function setMemoryLimitSafely(string $limit): void
+    {
+        $currentUsage = memory_get_usage(true);
+        $newLimitBytes = $this->convertToBytes($limit);
+
+        if ($currentUsage * 1.2 < $newLimitBytes) {
+            ini_set('memory_limit', $limit);
+            Log::info('Memory limit increased', ['to' => $limit]);
+        } else {
+            Log::warning('Memory limit not increased - current usage too high', [
+                'current_usage' => $currentUsage,
+                'requested_limit' => $newLimitBytes
+            ]);
+        }
+    }
+
+    /**
+     * Безопасное восстановление лимита памяти
+     */
+    private function restoreMemoryLimitSafely(string $originalLimit): void
+    {
+        $currentUsage = memory_get_usage(true);
+        $originalBytes = $this->convertToBytes($originalLimit);
+
+        if ($currentUsage < $originalBytes * 0.7) {
+            ini_set('memory_limit', $originalLimit);
+        } else {
+            Log::warning('Memory limit not restored - current usage too high', [
+                'current_usage' => $currentUsage,
+                'original_limit' => $originalBytes
+            ]);
+        }
+    }
+
+    /**
+     * Конвертация размера памяти в байты
+     */
+    private function convertToBytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '-1')
+            return -1;
+
+        $last = strtolower($value[strlen($value) - 1]);
+        $value = (int) $value;
+
+        switch ($last) {
+            case 'g':
+                $value *= 1024;
+            case 'm':
+                $value *= 1024;
+            case 'k':
+                $value *= 1024;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Создание временного файла из storage
+     */
+    private function createTempFileFromStorage(string $storagePath, string $prefix): string
+    {
+        $extension = strtolower(pathinfo($storagePath, PATHINFO_EXTENSION));
+        $tempPath = tempnam(sys_get_temp_dir(), $prefix) . '.' . $extension;
+
+        $stream = Storage::disk('local')->readStream($storagePath);
+        $tempHandle = fopen($tempPath, 'w');
+
+        if ($stream && $tempHandle) {
+            stream_copy_to_stream($stream, $tempHandle);
+            fclose($stream);
+            fclose($tempHandle);
+        } else {
+            $fileContent = Storage::disk('local')->get($storagePath);
+            file_put_contents($tempPath, $fileContent);
+            unset($fileContent);
+        }
+
+        return $tempPath;
+    }
+
+    /**
+     * Оптимизированная загрузка spreadsheet
+     */
+    private function loadSpreadsheetOptimized(string $filePath): Spreadsheet
+    {
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $reader = ($extension === "xlsx") ?
+            IOFactory::createReader('Xlsx') :
+            IOFactory::createReader('Xls');
+
+        $reader->setReadEmptyCells(true); // Важно: загружаем ВСЕ ячейки
+        $reader->setIncludeCharts(false);
+
+        if (method_exists($reader, 'setReadDataOnly')) {
+            $reader->setReadDataOnly(false); // Нам нужны стили
+        }
+
+        return $reader->load($filePath);
+    }
+
+    /**
+     * Копирование листов с управлением памятью
+     */
+    private function copySheetsWithMemoryManagement(Spreadsheet $source, Spreadsheet $target): void
+    {
+        $sheetCount = $source->getSheetCount();
+        $processedSheets = 0;
+
+        Log::info('Starting sheet copying process', ['total_sheets' => $sheetCount]);
+
+        foreach ($source->getAllSheets() as $sourceSheet) {
+            $sheetName = $this->getUniqueSheetName($target, $sourceSheet->getTitle());
+
+            Log::info('Merge: Processing sheet', [
+                'original_name' => $sourceSheet->getTitle(),
+                'new_name' => $sheetName,
+                'memory_before' => memory_get_usage(true)
+            ]);
+
+            $newSheet = new Worksheet($target, $sheetName);
+            $target->addSheet($newSheet);
+
+            // Копируем содержимое с полным сохранением стилей
+            $this->copySheetContentOptimized($sourceSheet, $newSheet);
+
+            $processedSheets++;
+
+            Log::info('Merge: Sheet processed', [
+                'progress' => "$processedSheets/$sheetCount",
+                'memory_after' => memory_get_usage(true)
+            ]);
+
+            // Управление памятью
+            if ($processedSheets % 2 === 0) {
+                $this->forceGarbageCollection();
+            }
+        }
+    }
+
+    /**
+     * Расчет оптимального размера батча
+     */
+    private function calculateOptimalBatchSize(int $totalCells): int
+    {
+        if ($totalCells > 100000)
+            return 5;
+        if ($totalCells > 50000)
+            return 10;
+        if ($totalCells > 10000)
+            return 25;
+        return 50;
+    }
+
+    /**
+     * Сохранение объединенного результата
+     */
+    private function saveMergedResult(Spreadsheet $spreadsheet): string
+    {
+        $outputExtension = strtolower(pathinfo($this->original_name, PATHINFO_EXTENSION));
+
+        Log::info('Saving merged result', [
+            'format' => $outputExtension,
+            'sheet_count' => $spreadsheet->getSheetCount()
+        ]);
+
+        $tempOutputPath = tempnam(sys_get_temp_dir(), 'merge_output_') . '.' . $outputExtension;
+
+        $writer = ($outputExtension === "xlsx") ?
+            IOFactory::createWriter($spreadsheet, 'Xlsx') :
+            IOFactory::createWriter($spreadsheet, 'Xls');
+
+        if (method_exists($writer, 'setPreCalculateFormulas')) {
+            $writer->setPreCalculateFormulas(false);
+        }
+
+        $writer->save($tempOutputPath);
+        unset($writer);
+
+        $this->cleanupSpreadsheets([$spreadsheet]);
+
+        if (!file_exists($tempOutputPath)) {
+            throw new \Exception("Merged output file was not created");
+        }
+
+        $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_merged_' . uniqid() . '.' . $outputExtension;
+        $storagePath = 'converted_files/' . $outputFileName;
+
+        $this->ensureConvertedFilesDirectory();
+
+        $outputStream = fopen($tempOutputPath, 'r');
+        Storage::disk('local')->put($storagePath, $outputStream);
+        if (is_resource($outputStream)) {
+            fclose($outputStream);
+        }
+
+        $this->safeUnlink($tempOutputPath);
+
+        if (!Storage::disk('local')->exists($storagePath)) {
+            throw new \Exception("Merged file not saved to storage");
+        }
+
+        return $storagePath;
     }
 
     /**
@@ -245,128 +830,421 @@ class ConvertionJob implements ShouldQueue
         return $name;
     }
 
+    // private function split(): void
+    // {
+    //     $fileContent = Storage::disk('local')->get($this->path);
+    //     $this->fileMetaData->update(["status" => "processing"]);
+
+    //     $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
+    //     file_put_contents($tempFilePath, $fileContent);
+    //     Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
+
+    //     $zipTempPath = null;
+    //     $tempSheetFiles = [];
+
+    //     try {
+    //         $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
+    //         $reader = ($fileExtension === "xlsx") ?
+    //             IOFactory::createReader('Xlsx') :
+    //             IOFactory::createReader('Xls');
+
+    //         $sourceSpreadsheet = $reader->load($tempFilePath);
+
+    //         // Создаем временный ZIP файл
+    //         $zipTempPath = tempnam(sys_get_temp_dir(), 'split_zip_') . '.zip';
+    //         $zip = new \ZipArchive();
+
+    //         if ($zip->open($zipTempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+    //             foreach ($sourceSpreadsheet->getAllSheets() as $sheet) {
+    //                 // Создаем новый Excel документ для каждого листа
+    //                 $newSpreadsheetForSheet = new Spreadsheet();
+    //                 $newSpreadsheetForSheet->removeSheetByIndex(0);
+
+    //                 $newSheet = new Worksheet($newSpreadsheetForSheet, $sheet->getTitle());
+    //                 $newSpreadsheetForSheet->addSheet($newSheet);
+
+    //                 // Копируем содержимое и структуры
+    //                 try {
+    //                     $this->copyMergedCells($sheet, $newSheet);
+    //                     $this->copyDimensions($sheet, $newSheet);
+    //                     $this->copyCellsWithArrayStyles($sheet, $newSheet);
+    //                 } catch (\Exception $e) {
+    //                     Log::warning('Split: warning while copying sheet content: ' . $e->getMessage(), ['sheet' => $sheet->getTitle()]);
+    //                 }
+
+    //                 // Сохраняем лист во временный файл
+    //                 $sheetName = $this->sanitizeFilename($sheet->getTitle());
+    //                 $tempSheetPath = tempnam(sys_get_temp_dir(), 'split_sheet_') . '.' . $fileExtension;
+
+    //                 $writer = ($fileExtension === "xlsx") ?
+    //                     IOFactory::createWriter($newSpreadsheetForSheet, 'Xlsx') :
+    //                     IOFactory::createWriter($newSpreadsheetForSheet, 'Xls');
+
+    //                 $writer->save($tempSheetPath);
+
+    //                 // Добавляем файл в ZIP
+    //                 $zip->addFile($tempSheetPath, $sheetName . '.' . $fileExtension);
+    //                 $tempSheetFiles[] = $tempSheetPath;
+
+    //                 // Освобождаем память
+    //                 $newSpreadsheetForSheet->disconnectWorksheets();
+    //                 unset($newSpreadsheetForSheet, $newSheet);
+
+    //                 gc_collect_cycles();
+    //             }
+
+    //             $zip->close();
+    //         } else {
+    //             throw new \Exception("Cannot create ZIP archive for split operation");
+    //         }
+
+    //         // Сохраняем ZIP файл в storage
+    //         $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_split.zip';
+    //         $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
+
+    //         // Создаем директорию если не существует
+    //         if (!Storage::disk('local')->exists('converted_files')) {
+    //             Storage::disk('local')->makeDirectory('converted_files');
+    //         }
+
+    //         // Сохраняем в storage
+    //         Storage::disk('local')->put($storagePath, file_get_contents($zipTempPath));
+
+    //         // Проверяем что файл сохранен в storage
+    //         if (!Storage::disk('local')->exists($storagePath)) {
+    //             Log::error('Function split: File not saved to storage', ['path' => $storagePath]);
+    //             $this->fileMetaData->update(["status" => "failed"]);
+    //             throw new \Exception("Function split: File not saved to storage");
+    //         }
+
+    //         $fileSize = Storage::disk('local')->size($storagePath);
+    //         Log::info('Function split: File saved to storage', [
+    //             'storage_path' => $storagePath,
+    //             'file_size' => $fileSize
+    //         ]);
+
+    //         // Обновляем статус
+    //         $this->fileMetaData->update([
+    //             "status" => "completed",
+    //             "output_path" => $storagePath
+    //         ]);
+
+    //         Log::info('Function split: Operation completed successfully', [
+    //             'file_id' => $this->fileMetaData->id,
+    //             'original_file' => $this->original_name,
+    //             'output_file' => $storagePath,
+    //             'sheet_count' => $sourceSpreadsheet->getSheetCount()
+    //         ]);
+
+    //         // Освобождаем память
+    //         $sourceSpreadsheet->disconnectWorksheets();
+    //         unset($sourceSpreadsheet);
+
+    //     } catch (\Exception $e) {
+    //         $this->fileMetaData->update(["status" => "failed"]);
+    //         Log::error('Function split: Conversion error: ' . $e->getMessage());
+    //         throw $e;
+    //     } finally {
+    //         $this->safeCleanup($tempFilePath, $zipTempPath);
+
+    //         // Удаляем временные файлы листов
+    //         foreach ($tempSheetFiles as $tempSheetFile) {
+    //             $this->safeCleanup($tempSheetFile);
+    //         }
+    //     }
+    // }
+
     private function split(): void
     {
-        $fileContent = Storage::disk('local')->get($this->path);
-        $this->fileMetaData->update(["status" => "processing"]);
-
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'laravel_excel_');
-        file_put_contents($tempFilePath, $fileContent);
-        Log::info('Temp file created', ['path' => $tempFilePath, 'size' => filesize($tempFilePath)]);
-
-        $zipTempPath = null;
-        $tempSheetFiles = [];
+        $originalMemoryLimit = ini_get('memory_limit');
+        $tempFiles = [];
+        $sourceSpreadsheet = null;
 
         try {
-            $fileExtension = pathinfo($this->original_name, PATHINFO_EXTENSION);
-            $reader = ($fileExtension === "xlsx") ?
-                IOFactory::createReader('Xlsx') :
-                IOFactory::createReader('Xls');
+            // Безопасное управление памятью
+            $this->setMemoryLimitSafely('1024M');
 
-            $sourceSpreadsheet = $reader->load($tempFilePath);
+            $this->markAsProcessing();
 
-            // Создаем временный ZIP файл
+            Log::info('Split: Starting split operation', [
+                'source_file' => $this->path,
+                'original_name' => $this->original_name
+            ]);
+
+            // Создаем временный файл с оптимизацией памяти
+            $tempFiles['source'] = $this->createTempFileFromStorage($this->path, 'split_source_');
+
+            Log::info('Split: Temp file created', [
+                'source' => $tempFiles['source'],
+                'memory_usage' => memory_get_usage(true)
+            ]);
+
+            // Загружаем исходный файл с оптимизацией
+            $sourceSpreadsheet = $this->loadSpreadsheetOptimized($tempFiles['source']);
+            $sheetCount = $sourceSpreadsheet->getSheetCount();
+
+            Log::info('Split: Source file loaded', [
+                'sheet_count' => $sheetCount,
+                'memory_usage' => memory_get_usage(true)
+            ]);
+
+            // Создаем ZIP архив
             $zipTempPath = tempnam(sys_get_temp_dir(), 'split_zip_') . '.zip';
             $zip = new \ZipArchive();
 
-            if ($zip->open($zipTempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-                foreach ($sourceSpreadsheet->getAllSheets() as $sheet) {
-                    // Создаем новый Excel документ для каждого листа
-                    $newSpreadsheetForSheet = new Spreadsheet();
-                    $newSpreadsheetForSheet->removeSheetByIndex(0);
-
-                    $newSheet = new Worksheet($newSpreadsheetForSheet, $sheet->getTitle());
-                    $newSpreadsheetForSheet->addSheet($newSheet);
-
-                    // Копируем содержимое и структуры
-                    try {
-                        $this->copyMergedCells($sheet, $newSheet);
-                        $this->copyDimensions($sheet, $newSheet);
-                        $this->copyCellsWithArrayStyles($sheet, $newSheet);
-                    } catch (\Exception $e) {
-                        Log::warning('Split: warning while copying sheet content: ' . $e->getMessage(), ['sheet' => $sheet->getTitle()]);
-                    }
-
-                    // Сохраняем лист во временный файл
-                    $sheetName = $this->sanitizeFilename($sheet->getTitle());
-                    $tempSheetPath = tempnam(sys_get_temp_dir(), 'split_sheet_') . '.' . $fileExtension;
-
-                    $writer = ($fileExtension === "xlsx") ?
-                        IOFactory::createWriter($newSpreadsheetForSheet, 'Xlsx') :
-                        IOFactory::createWriter($newSpreadsheetForSheet, 'Xls');
-
-                    $writer->save($tempSheetPath);
-
-                    // Добавляем файл в ZIP
-                    $zip->addFile($tempSheetPath, $sheetName . '.' . $fileExtension);
-                    $tempSheetFiles[] = $tempSheetPath;
-
-                    // Освобождаем память
-                    $newSpreadsheetForSheet->disconnectWorksheets();
-                    unset($newSpreadsheetForSheet, $newSheet);
-
-                    gc_collect_cycles();
-                }
-
-                $zip->close();
-            } else {
+            if ($zip->open($zipTempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== TRUE) {
                 throw new \Exception("Cannot create ZIP archive for split operation");
             }
 
-            // Сохраняем ZIP файл в storage
+            $processedSheets = 0;
+            $tempSheetFiles = [];
+
+            // Обрабатываем каждый лист с управлением памятью
+            foreach ($sourceSpreadsheet->getSheetNames() as $sheetIndex => $sheetName) {
+                Log::info('Split: Processing sheet', [
+                    'sheet_name' => $sheetName,
+                    'sheet_index' => $sheetIndex,
+                    'progress' => ($processedSheets + 1) . '/' . $sheetCount,
+                    'memory_before' => memory_get_usage(true)
+                ]);
+
+                // Создаем отдельный файл для листа
+                $sheetFilePath = $this->createSingleSheetFile($sourceSpreadsheet, $sheetIndex, $sheetName);
+                $tempSheetFiles[] = $sheetFilePath;
+
+                // Добавляем в ZIP
+                $safeSheetName = $this->sanitizeFilename($sheetName);
+                $zip->addFile($sheetFilePath, $safeSheetName . '.' . pathinfo($this->original_name, PATHINFO_EXTENSION));
+
+                $processedSheets++;
+
+                Log::info('Split: Sheet processed', [
+                    'sheet_name' => $sheetName,
+                    'memory_after' => memory_get_usage(true)
+                ]);
+
+                // Очистка памяти после каждого 2-го листа
+                if ($processedSheets % 2 === 0) {
+                    $this->forceGarbageCollection();
+                }
+            }
+
+            $zip->close();
+            Log::info('Split: ZIP archive created', [
+                'zip_path' => $zipTempPath,
+                'total_sheets' => $processedSheets
+            ]);
+
+            // Сохраняем ZIP в storage
             $outputFileName = pathinfo($this->original_name, PATHINFO_FILENAME) . '_split.zip';
             $storagePath = 'converted_files/' . uniqid() . '_' . $outputFileName;
 
-            // Создаем директорию если не существует
-            if (!Storage::disk('local')->exists('converted_files')) {
-                Storage::disk('local')->makeDirectory('converted_files');
+            $this->ensureConvertedFilesDirectory();
+
+            // Используем потоковое копирование для ZIP
+            $zipStream = fopen($zipTempPath, 'r');
+            Storage::disk('local')->put($storagePath, $zipStream);
+            if (is_resource($zipStream)) {
+                fclose($zipStream);
             }
 
-            // Сохраняем в storage
-            Storage::disk('local')->put($storagePath, file_get_contents($zipTempPath));
-
-            // Проверяем что файл сохранен в storage
+            // Проверяем сохранение
             if (!Storage::disk('local')->exists($storagePath)) {
-                Log::error('Function split: File not saved to storage', ['path' => $storagePath]);
-                $this->fileMetaData->update(["status" => "failed"]);
-                throw new \Exception("Function split: File not saved to storage");
+                throw new \Exception("Split ZIP file not saved to storage");
             }
 
             $fileSize = Storage::disk('local')->size($storagePath);
-            Log::info('Function split: File saved to storage', [
+            Log::info('Split: File saved to storage', [
                 'storage_path' => $storagePath,
                 'file_size' => $fileSize
             ]);
 
-            // Обновляем статус
-            $this->fileMetaData->update([
-                "status" => "completed",
-                "output_path" => $storagePath
-            ]);
+            $this->markAsCompleted($storagePath);
 
-            Log::info('Function split: Operation completed successfully', [
+            Log::info('Split: Operation completed successfully', [
                 'file_id' => $this->fileMetaData->id,
                 'original_file' => $this->original_name,
                 'output_file' => $storagePath,
-                'sheet_count' => $sourceSpreadsheet->getSheetCount()
+                'sheet_count' => $sheetCount,
+                'final_memory' => memory_get_usage(true)
             ]);
 
-            // Освобождаем память
-            $sourceSpreadsheet->disconnectWorksheets();
-            unset($sourceSpreadsheet);
-
         } catch (\Exception $e) {
-            $this->fileMetaData->update(["status" => "failed"]);
-            Log::error('Function split: Conversion error: ' . $e->getMessage());
+            $this->markAsFailed($e->getMessage());
+            Log::error('Split: Error: ' . $e->getMessage(), [
+                'memory_at_error' => memory_get_usage(true)
+            ]);
             throw $e;
         } finally {
-            $this->safeCleanup($tempFilePath, $zipTempPath);
+            // Приоритетная очистка памяти
+            $this->cleanupSpreadsheets([$sourceSpreadsheet]);
+            $this->restoreMemoryLimitSafely($originalMemoryLimit);
 
-            // Удаляем временные файлы листов
-            foreach ($tempSheetFiles as $tempSheetFile) {
-                $this->safeCleanup($tempSheetFile);
+            // Очистка временных файлов
+            $this->cleanupTempFiles($tempFiles);
+            if (isset($zipTempPath)) {
+                $this->safeUnlink($zipTempPath);
             }
+            if (isset($tempSheetFiles)) {
+                foreach ($tempSheetFiles as $tempSheetFile) {
+                    $this->safeUnlink($tempSheetFile);
+                }
+            }
+
+            $this->forceGarbageCollection();
         }
+    }
+
+    /**
+     * Создание отдельного файла для одного листа
+     */
+    private function createSingleSheetFile(Spreadsheet $sourceSpreadsheet, int $sheetIndex, string $sheetName): string
+    {
+        $extension = pathinfo($this->original_name, PATHINFO_EXTENSION);
+        $tempSheetPath = tempnam(sys_get_temp_dir(), 'split_sheet_') . '.' . $extension;
+
+        try {
+            // Создаем новый spreadsheet только с одним листом
+            $newSpreadsheet = new Spreadsheet();
+
+            // Удаляем стандартный лист
+            $newSpreadsheet->removeSheetByIndex(0);
+
+            // Получаем исходный лист
+            $sourceSheet = $sourceSpreadsheet->getSheet($sheetIndex);
+
+            // Создаем новый лист с тем же именем
+            $newSheet = new Worksheet($newSpreadsheet, $sheetName);
+            $newSpreadsheet->addSheet($newSheet);
+
+            // Оптимизированное копирование содержимого
+            $this->copySheetContentOptimized($sourceSheet, $newSheet);
+
+            // Сохраняем файл
+            $writer = ($extension === "xlsx") ?
+                IOFactory::createWriter($newSpreadsheet, 'Xlsx') :
+                IOFactory::createWriter($newSpreadsheet, 'Xls');
+
+            // Оптимизации для writer
+            if (method_exists($writer, 'setPreCalculateFormulas')) {
+                $writer->setPreCalculateFormulas(false);
+            }
+
+            $writer->save($tempSheetPath);
+
+            // Очищаем память
+            $newSpreadsheet->disconnectWorksheets();
+            unset($newSpreadsheet, $writer);
+
+            return $tempSheetPath;
+
+        } catch (\Exception $e) {
+            // Очистка в случае ошибки
+            if (isset($newSpreadsheet)) {
+                $newSpreadsheet->disconnectWorksheets();
+            }
+            $this->safeUnlink($tempSheetPath);
+            throw new \Exception("Failed to create sheet file for '{$sheetName}': " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Оптимизированное копирование данных и стилей для split операции
+     */
+    private function copyDataAndStylesForSplit(Worksheet $sourceSheet, Worksheet $targetSheet): void
+    {
+        $highestRow = $sourceSheet->getHighestRow();
+        $highestColumn = $sourceSheet->getHighestColumn();
+        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+
+        // Автоматический подбор размера батча
+        $batchSize = $this->calculateOptimalBatchSizeForSplit($highestRow, $highestColumnIndex);
+
+        Log::debug('Split: Starting sheet data copy', [
+            'sheet' => $sourceSheet->getTitle(),
+            'rows' => $highestRow,
+            'columns' => $highestColumn,
+            'batch_size' => $batchSize
+        ]);
+
+        $processedRows = 0;
+
+        for ($row = 1; $row <= $highestRow; $row += $batchSize) {
+            $endRow = min($row + $batchSize - 1, $highestRow);
+
+            // Обрабатываем батч строк
+            $this->processBatchForSplit($sourceSheet, $targetSheet, $row, $endRow, $highestColumnIndex);
+
+            $processedRows += ($endRow - $row + 1);
+
+            Log::debug('Split: Processed row batch', [
+                'sheet' => $sourceSheet->getTitle(),
+                'rows' => "$row-$endRow",
+                'total_processed' => $processedRows,
+                'memory_usage' => memory_get_usage(true)
+            ]);
+
+            // Очистка памяти после каждого батча
+            $this->forceGarbageCollection();
+        }
+
+        Log::debug('Split: Sheet data copy completed', [
+            'sheet' => $sourceSheet->getTitle(),
+            'total_rows' => $processedRows
+        ]);
+    }
+
+    /**
+     * Обработка батча строк для split операции
+     */
+    private function processBatchForSplit(Worksheet $sourceSheet, Worksheet $targetSheet, int $startRow, int $endRow, int $highestColumnIndex): void
+    {
+        for ($currentRow = $startRow; $currentRow <= $endRow; $currentRow++) {
+            $rowData = [];
+            $rowHasData = false;
+
+            // Собираем данные строки
+            for ($colIndex = 1; $colIndex <= $highestColumnIndex; $colIndex++) {
+                $col = Coordinate::stringFromColumnIndex($colIndex);
+                $cellCoordinate = $col . $currentRow;
+
+                $sourceCell = $sourceSheet->getCell($cellCoordinate);
+                $cellValue = $this->getSafeCellValue($sourceCell);
+
+                $rowData[] = $cellValue === null ? '' : $cellValue;
+
+                // Отмечаем, если в строке есть данные
+                if (!$rowHasData && $cellValue !== null && $cellValue !== '') {
+                    $rowHasData = true;
+                }
+            }
+
+            // Записываем данные строки (только если есть данные)
+            if ($rowHasData) {
+                $targetSheet->fromArray($rowData, null, 'A' . $currentRow);
+            }
+
+            // Копируем стили для ВСЕХ ячеек в строке
+            $this->copyAllStylesForRow($sourceSheet, $targetSheet, $currentRow, $highestColumnIndex);
+
+            unset($rowData);
+        }
+    }
+
+    /**
+     * Расчет оптимального размера батча для split операции
+     */
+    private function calculateOptimalBatchSizeForSplit(int $totalRows, int $totalColumns): int
+    {
+        $totalCells = $totalRows * $totalColumns;
+
+        if ($totalCells > 50000)
+            return 5;       // Очень большие листы
+        if ($totalCells > 20000)
+            return 10;      // Большие листы
+        if ($totalCells > 5000)
+            return 25;       // Средние листы
+        return 50;                               // Малые листы
     }
 
     private function ExcelToHtml(): void
