@@ -13,221 +13,293 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
-        /* Базовые стили */
-        body {
-            font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f8fafc;
-            min-height: 100vh;
-        }
-        
-        /* Красивый хедер */
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+    /* === Базовые стили === */
+    body {
+        font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f8fafc;
+        min-height: 100vh;
+    }
 
+    .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .header .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 70px;
+    }
+
+    .header .logo {
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-decoration: none;
+        color: white;
+        transition: color 0.3s ease;
+    }
+
+    .header .logo:hover {
+        color: #e2e8f0;
+    }
+
+    .header nav {
+        display: flex;
+        gap: 2rem;
+    }
+
+    .header nav a {
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s ease;
+        padding: 0.5rem 0;
+    }
+
+    .header nav a:hover {
+        color: #e2e8f0;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    /* === Герой секция === */
+    .hero {
+        text-align: center;
+        padding: 4rem 0 2rem;
+    }
+
+    .hero-title {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 1rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: #6b7280;
+        max-width: 600px;
+        margin: 0 auto 2rem;
+        line-height: 1.6;
+    }
+
+    /* === Карточки функций === */
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+        margin: 3rem 0;
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        text-decoration: none;
+        color: #374151;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .feature-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .feature-icon svg {
+        width: 32px;
+        height: 32px;
+        color: white;
+    }
+
+    .feature-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+    }
+
+    .feature-description {
+        color: #6b7280;
+        line-height: 1.5;
+    }
+
+    /* === Информационная секция === */
+    .info-section {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        margin: 4rem 0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f2937;
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+
+    .info-item {
+        text-align: center;
+    }
+
+    .info-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+    }
+
+    .info-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .info-item-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+
+    .info-item-description {
+        color: #6b7280;
+        line-height: 1.5;
+    }
+
+    /* Цвета иконок */
+    .icon-green { background-color: #dcfce7; }
+    .icon-green svg { color: #16a34a; }
+    .icon-blue { background-color: #dbeafe; }
+    .icon-blue svg { color: #2563eb; }
+    .icon-purple { background-color: #f3e8ff; }
+    .icon-purple svg { color: #9333ea; }
+
+    /* === Адаптивность === */
+
+    /* Планшеты: iPad (портрет ~768px) */
+    @media (max-width: 768px) {
         .header .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 70px;
-        }
-
-        .header .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-decoration: none;
-            color: white;
-            transition: color 0.3s ease;
-        }
-
-        .header .logo:hover {
-            color: #e2e8f0;
+            flex-direction: column;
+            height: auto;
+            padding: 15px;
         }
 
         .header nav {
-            display: flex;
-            gap: 2rem;
-        }
-
-        .header nav a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s ease;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
             padding: 0.5rem 0;
         }
 
-        .header nav a:hover {
-            color: #e2e8f0;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Карточки функций */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 2rem;
-            margin: 3rem 0;
-        }
-
-        .feature-card {
-            background: white;
-            border-radius: 16px;
-            padding: 2.5rem 1.5rem;
-            text-align: center;
-            text-decoration: none;
-            color: #374151;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid #e5e7eb;
-            transition: all 0.3s ease;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            color: #374151;
-        }
-
-        .feature-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .feature-icon svg {
-            width: 32px;
-            height: 32px;
-            color: white;
-        }
-
-        .feature-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-        }
-
-        .feature-description {
-            color: #6b7280;
-            line-height: 1.5;
-        }
-
-        /* Герой секция */
-        .hero {
-            text-align: center;
-            padding: 4rem 0 2rem;
+        .header nav a {
+            font-size: 0.875rem;
+            padding: 0.25rem 0.5rem;
         }
 
         .hero-title {
-            font-size: 3rem;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 1rem;
+            font-size: 2.25rem;
         }
 
         .hero-subtitle {
-            font-size: 1.25rem;
-            color: #6b7280;
-            max-width: 600px;
-            margin: 0 auto 2rem;
-            line-height: 1.6;
+            font-size: 1.125rem;
+            padding: 0 10px;
         }
 
-        /* Информационная секция */
-        .info-section {
-            background: white;
-            border-radius: 20px;
-            padding: 3rem;
-            margin: 4rem 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .info-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1f2937;
-            text-align: center;
-            margin-bottom: 3rem;
+        .features-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
         }
 
         .info-grid {
-            display: grid;
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Маленькие планшеты и телефоны в альбомной ориентации (Pixel 7 ~720px, iPad альбом ~1024px) */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .features-grid {
             grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
+            gap: 1.75rem;
         }
 
-        .info-item {
-            text-align: center;
+        .info-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* Очень узкие телефоны: Pixel 7 портрет (~393px) */
+    @media (max-width: 480px) {
+        .features-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
         }
 
-        .info-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
+        .hero-title {
+            font-size: 1.75rem;
         }
 
-        .info-icon svg {
-            width: 24px;
-            height: 24px;
+        .hero-subtitle {
+            font-size: 1rem;
+            padding: 0 15px;
         }
 
-        .info-item-title {
+        .info-section {
+            padding: 2rem 1.5rem;
+        }
+
+        .info-title {
+            font-size: 1.5rem;
+        }
+
+        .feature-card {
+            padding: 2rem 1rem;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+        }
+
+        .feature-title {
             font-size: 1.125rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.5rem;
         }
-
-        .info-item-description {
-            color: #6b7280;
-            line-height: 1.5;
-        }
-
-        /* Цвета для иконок информации */
-        .icon-green {
-            background-color: #dcfce7;
-        }
-
-        .icon-green svg {
-            color: #16a34a;
-        }
-
-        .icon-blue {
-            background-color: #dbeafe;
-        }
-
-        .icon-blue svg {
-            color: #2563eb;
-        }
-
-        .icon-purple {
-            background-color: #f3e8ff;
-        }
-
-        .icon-purple svg {
-            color: #9333ea;
-        }
-    </style>
+    }
+</style>
 </head>
 <body>
     <!-- Навигация -->
