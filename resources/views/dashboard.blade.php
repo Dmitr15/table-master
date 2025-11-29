@@ -84,6 +84,10 @@
             color: #4f46e5;
         }
 
+        .action-btn:hover {
+            background-color: #3634343a
+        }
+
         .main {
             display: flex;
             gap: 1.5rem;
@@ -156,54 +160,12 @@
             font-family: inherit;
         }
 
-        .view a:hover,
-        .view button:hover {
-            background-color: #648ce4;
-        }
-
-        .delete a:hover,
-        .delete button:hover {
-            background-color: #d47474;
-        }
-
-        .download a:hover,
-        .download button:hover {
-            background-color: #6fb19c;
-        }
-
-        .xlsxToXls a:hover,
-        .xlsxToXls button:hover {
-            background-color: #e0c97b;
-        }
-
-        .xlsToXlsx a:hover,
-        .xlsToXlsx button:hover {
-            background-color: #7bb8e0;
-        }
-
-        .excelToOds a:hover,
-        .excelToOds button:hover {
-            background-color: #a37be0;
-        }
-
-        .excelToCsv a:hover,
-        .excelToCsv button:hover {
-            background-color: #7be0b3;
-        }
-
-        .excelToHtml a:hover,
-        .excelToHtml button:hover {
-            background-color: #e07bb8;
-        }
-
-        /* Стили для форм */
         .delete-form {
             display: inline;
             margin: 0;
             padding: 0;
         }
 
-        /* Стили для индикаторов загрузки и статуса */
         .loading {
             display: inline-block;
             width: 16px;
@@ -304,6 +266,10 @@
                 flex-wrap: wrap;
                 justify-content: center;
             }
+
+            .error-container {
+                width: 100%;
+            }
         }
 
         .merge input[type="file"] {
@@ -355,8 +321,6 @@
         }
 
         .upload input[type="file"] {
-            /* display: flex; */
-            /* margin-bottom: 1rem; */
             justify-content: center;
             align-items: center;
         }
@@ -402,13 +366,6 @@
         .article__row+.error-container {
             margin-top: -0.5rem;
             margin-bottom: 1rem;
-        }
-
-        /* Адаптивность */
-        @media (max-width: 768px) {
-            .error-container {
-                width: 100%;
-            }
         }
     </style>
 </head>
@@ -465,10 +422,7 @@
                                         </form>
                                     </div>
 
-                                    @php
-                                        $extension = pathinfo($file->path, PATHINFO_EXTENSION);
-                                    @endphp
-                                    @if ($extension === 'xls')
+                                    @if (pathinfo($file->path, PATHINFO_EXTENSION) === 'xls')
                                         <div class="xlsToXlsx">
                                             <form class="conversion-form" data-file-id="{{$file->id}}"
                                                 data-conversion-type="xlsToXlsx">
@@ -567,8 +521,6 @@
     </div>
 
     <script>
-
-
         document.addEventListener('DOMContentLoaded', function () {
             // Обработчик для всех форм конвертации (кроме merge)
             document.querySelectorAll('.conversion-form:not([data-conversion-type="merge"])').forEach(form => {
@@ -712,12 +664,6 @@
                             </div>
                         `;
                                 } else {
-                                    //             conversionInfo.innerHTML = `
-                                    //     <div class="file-status">
-                                    //         <span class="conversion-status status-completed">Operation completed!</span>
-                                    //         <a href="${downloadUrl}" class="download-link">Download ${conversionType === 'merge' ? 'merged' : 'converted'} file</a>
-                                    //     </div>
-                                    // `;
                                     const link = document.createElement('a');
                                     link.href = downloadUrl;
                                     link.download = ''; // можно указать имя файла, например: 'converted-file.xlsx'
@@ -737,7 +683,7 @@
                                 // Через 10 секунд убираем сообщение об успехе
                                 setTimeout(() => {
                                     conversionInfo.innerHTML = '';
-                                }, 10000);
+                                }, 15000);
 
                             } else if (data.status === 'failed') {
                                 clearInterval(checkInterval);
@@ -753,7 +699,7 @@
                             } else if (data.status === 'processing') {
                                 // Обновляем статус каждые 5 проверок для уменьшения логов
                                 if (attempts % 5 === 0) {
-                                    conversionInfo.innerHTML = `<span class="conversion-status status-processing">Processing... (${attempts}/${maxAttempts})</span>`;
+                                    conversionInfo.innerHTML = `<span class="conversion-status status-processing">Processing...</span>`;
                                 }
                             } else if (attempts >= maxAttempts) {
                                 clearInterval(checkInterval);
