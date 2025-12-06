@@ -540,6 +540,9 @@
                 });
             });
 
+            // Проверяем незавершенные конвертации при загрузке страницы
+            checkPendingConversions();
+
             // Общая функция обработки конвертации
             function handleConversion(form) {
                 const fileId = form.dataset.fileId;
@@ -557,9 +560,7 @@
                 let fetchOptions;
 
                 if (useFormData) {
-                    // Для операций с загрузкой файлов (merge)
                     const formData = new FormData(form);
-
                     fetchOptions = {
                         method: 'POST',
                         body: formData,
@@ -569,7 +570,6 @@
                         }
                     };
                 } else {
-                    // Для обычных операций конвертации
                     if (button) {
                         button.disabled = true;
                         button.innerHTML = 'Converting... <span class="loading"></span>';
@@ -588,31 +588,44 @@
                     };
                 }
 
+                // Сохраняем информацию о старте конвертации
+                const conversionData = {
+                    fileId: fileId,
+                    conversionType: conversionType,
+                    status: 'processing',
+                    startedAt: new Date().toISOString(),
+                    buttonText: getButtonText(conversionType)
+                };
+
+                saveConversionToStorage(fileId, conversionData);
+
                 // Отправляем AJAX запрос
                 fetch(getConversionUrl(conversionType, fileId), fetchOptions)
                     .then(response => {
                         if (!response.ok) {
-                            throw new Error('Network response was not ok');
+                            return response.json().then(errorData => {
+                                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                            });
                         }
                         return response.json();
                     })
                     .then(data => {
-                        if (data.success) {
-                            // Запускаем проверку статуса
-                            checkConversionStatus(fileId, conversionInfo, button, conversionType, form);
-                        } else {
-                            throw new Error(data.message || 'Operation failed');
-                        }
+                        // Успешный старт - начинаем отслеживание
+                        console.log('Conversion started successfully:', data);
+                        checkConversionStatus(fileId, conversionInfo, button, conversionType, form);
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Error starting conversion:', error);
                         if (button) {
                             button.disabled = false;
                             button.textContent = getButtonText(conversionType);
                         }
-                        conversionInfo.innerHTML = '<span class="conversion-status status-failed">Operation failed: ' + error.message + '</span>';
+                        conversionInfo.innerHTML = '<span class="conversion-status status-failed">' +
+                            (error.message || 'Operation failed') + '</span>';
 
-                        // Через 5 секунд убираем сообщение об ошибке
+                        // Обновляем статус в хранилище
+                        updateConversionStatus(fileId, 'failed', error.message);
+
                         setTimeout(() => {
                             conversionInfo.innerHTML = '';
                         }, 5000);
@@ -621,7 +634,7 @@
 
             function checkConversionStatus(fileId, conversionInfo, button, conversionType, form) {
                 let attempts = 0;
-                const maxAttempts = 120; // Увеличим до 4 минут (120 * 2000ms)
+                const maxAttempts = 120;
                 let lastStatus = '';
 
                 const checkInterval = setInterval(() => {
@@ -635,52 +648,58 @@
                             return response.json();
                         })
                         .then(data => {
-                            console.log('Status check response:', data);
-
                             if (data.error) {
                                 throw new Error(data.error);
                             }
 
                             lastStatus = data.status;
 
+                            // Обновляем статус в хранилище
+                            updateConversionStatus(fileId, data.status, null, data);
+
                             if (data.status === 'completed') {
                                 clearInterval(checkInterval);
+
                                 if (button) {
                                     button.disabled = false;
                                     button.textContent = getButtonText(conversionType);
                                 }
 
-                                // Для merge очищаем поле выбора файла после успешного завершения
+                                // Для merge очищаем поле выбора файла
                                 if (conversionType === 'merge' && form) {
                                     form.reset();
                                 }
 
-                                let downloadUrl = data.file || data.output_file;
+                                let downloadUrl = data.file || data.output_file || data.output_path;
                                 if (!downloadUrl) {
-                                    console.error('No download URL provided in response:', data);
+                                    console.error('No download URL provided:', data);
                                     conversionInfo.innerHTML = `
-                            <div class="file-status">
-                                <span class="conversion-status status-completed">Operation completed but download link missing!</span>
-                            </div>
-                        `;
+                                    <div class="file-status">
+                                        <span class="conversion-status status-completed">Conversion completed!</span>
+                                        <span class="conversion-status status-failed" style="margin-left:10px;">Download link missing</span>
+                                    </div>
+                                `;
                                 } else {
+                                    // Автоматическое скачивание
                                     const link = document.createElement('a');
                                     link.href = downloadUrl;
-                                    link.download = ''; // можно указать имя файла, например: 'converted-file.xlsx'
+                                    link.download = '';
                                     link.style.display = 'none';
                                     document.body.appendChild(link);
                                     link.click();
                                     document.body.removeChild(link);
 
-                                    // Опционально: показать сообщение без ссылки
+                                    // Показываем сообщение
                                     conversionInfo.innerHTML = `
-                                        <div class="file-status">
-                                            <span class="conversion-status status-completed">File downloaded successfully!</span>
-                                        </div>
-                                        `;
+                                    <div class="file-status">
+                                        <span class="conversion-status status-completed">File downloaded successfully!</span>
+                                    </div>
+                                `;
+
+                                    // Сохраняем ссылку для повторного скачивания
+                                    updateConversionStatus(fileId, 'completed', null, { downloadUrl: downloadUrl });
                                 }
 
-                                // Через 10 секунд убираем сообщение об успехе
                                 setTimeout(() => {
                                     conversionInfo.innerHTML = '';
                                 }, 15000);
@@ -696,8 +715,9 @@
                                 setTimeout(() => {
                                     conversionInfo.innerHTML = '';
                                 }, 5000);
+
                             } else if (data.status === 'processing') {
-                                // Обновляем статус каждые 5 проверок для уменьшения логов
+                                // Показываем прогресс
                                 if (attempts % 5 === 0) {
                                     conversionInfo.innerHTML = `<span class="conversion-status status-processing">Processing...</span>`;
                                 }
@@ -727,9 +747,61 @@
                                 conversionInfo.innerHTML = '';
                             }, 5000);
                         });
-                }, 2000); // Проверяем каждые 2 секунды
+                }, 2000);
             }
-            // Вспомогательные функции (остаются без изменений)
+
+            function checkPendingConversions() {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith('conversion-')) {
+                        const fileId = key.replace('conversion-', '');
+                        try {
+                            const data = JSON.parse(localStorage.getItem(key));
+
+                            // Если конвертация еще в процессе, проверяем статус
+                            if (data.status === 'processing') {
+                                const conversionInfo = document.getElementById(`conversion-info-${fileId}`);
+                                const form = document.querySelector(`.conversion-form[data-file-id="${fileId}"]`);
+                                const button = form ? form.querySelector('.convert-btn') : null;
+
+                                if (conversionInfo) {
+                                    conversionInfo.innerHTML = '<span class="conversion-status status-processing">Checking previous conversion...</span>';
+                                    checkConversionStatus(fileId, conversionInfo, button, data.conversionType, form);
+                                }
+                            }
+
+                        } catch (e) {
+                            console.error('Error parsing localStorage data:', e);
+                            localStorage.removeItem(key);
+                        }
+                    }
+                }
+            }
+
+            function saveConversionToStorage(fileId, data) {
+                localStorage.setItem(`conversion-${fileId}`, JSON.stringify(data));
+            }
+
+            function updateConversionStatus(fileId, status, error = null, additionalData = {}) {
+                try {
+                    const key = `conversion-${fileId}`;
+                    const existing = localStorage.getItem(key);
+                    let data = existing ? JSON.parse(existing) : {};
+
+                    data.status = status;
+                    data.updatedAt = new Date().toISOString();
+
+                    if (error) data.error = error;
+                    if (additionalData.downloadUrl) data.downloadUrl = additionalData.downloadUrl;
+                    if (status === 'completed') data.completedAt = new Date().toISOString();
+
+                    localStorage.setItem(key, JSON.stringify(data));
+                } catch (e) {
+                    console.error('Error updating conversion status:', e);
+                }
+            }
+
+            // Вспомогательные функции
             function getConversionUrl(conversionType, fileId) {
                 const routes = {
                     'xlsxToXls': '/file/' + fileId + '/xlsxToXls',
@@ -753,10 +825,9 @@
                     'split': 'Split',
                     'merge': 'Merge',
                 };
-                return texts[conversionType];
+                return texts[conversionType] || 'Convert';
             }
         });
-
     </script>
 </body>
 
