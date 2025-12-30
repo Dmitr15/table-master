@@ -288,9 +288,9 @@
                 <a href="{{ route('index') }}" class="logo">ExcelMaster</a>
                 <ul class="nav-links">
                     <li><a href="{{ route('index') }}">Home</a></li>
-                    <li><a href="#">About</a></li>
-                    <li><a href="#benefits">Преимущества</a></li>
-                    <li><a href="#contact">Контакты</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#benefits">Benefits</a></li>
+                    <li><a href="#contact">Contact</a></li>
                     @guest
                         <a href="{{route('login')}}" class="text-gray-500 hover:text-primary transition duration-300">Log
                             in</a>
@@ -311,131 +311,126 @@
         </div>
     </header>
 
-    <!-- Герой секция -->
     <section class="hero">
         <div class="container">
-            <h1>Профессиональная конвертация Excel файлов</h1>
-            <p>Быстрое и точное преобразование между XLS, XLSX, CSV, ODS и HTML форматами</p>
-            <a href="{{ route('dashboard') }}" class="cta-button">Загрузить файл</a>
+            <h1>Professional Excel File Conversion</h1>
+            <p>Fast and accurate conversion between XLS, XLSX, CSV, ODS, and HTML formats</p>
+            <a href="{{ route('dashboard') }}" class="cta-button">Upload</a>
         </div>
     </section>
 
-    <!-- Особенности -->
-    <section id="features" class="features">
+    <section id="about" class="features">
         <div class="container">
-            <h2 class="section-title">Наши возможности</h2>
+            <h2 class="section-title">Our Capabilities</h2>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">⚡</div>
-                    <h3>Мгновенная конвертация</h3>
-                    <p>Преобразование файлов в реальном времени с сохранением всех данных и форматирования</p>
+                    <h3>Instant Conversion</h3>
+                    <p>Real-time file conversion with all data and formatting preserved</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🛡️</div>
-                    <h3>Безопасность данных</h3>
-                    <p>Все файлы обрабатываются локально и автоматически удаляются после конвертации</p>
+                    <h3>Data Security</h3>
+                    <p>All files are processed locally and automatically deleted after conversion</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📊</div>
-                    <h3>Поддержка всех форматов</h3>
-                    <p>XLS, XLSX, CSV, ODS, HTML - полная совместимость со всеми версиями Excel</p>
+                    <h3>Full Format Support</h3>
+                    <p>XLS, XLSX, CSV, ODS, HTML – complete compatibility with all Excel versions</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔧</div>
-                    <h3>Сохранение стилей</h3>
-                    <p>Автоматическое сохранение шрифтов, цветов, границ и форматирования ячеек</p>
+                    <h3>Style Preservation</h3>
+                    <p>Automatic retention of fonts, colors, borders, and cell formatting</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🚀</div>
-                    <h3>Оптимизация памяти</h3>
-                    <p>Эффективная работа с большими файлами до 2 GB без потери производительности</p>
+                    <h3>Memory Optimization</h3>
+                    <p>Efficient handling of large files up to 2 GB without performance loss</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">💾</div>
-                    <h3>Пакетная обработка</h3>
-                    <p>Одновременная конвертация нескольких файлов и автоматическое создание архивов</p>
+                    <h3>Batch Processing</h3>
+                    <p>Convert multiple files simultaneously and automatically create archives</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Как это работает -->
     <section id="how-it-works" class="how-it-works">
         <div class="container">
-            <h2 class="section-title">Как это работает</h2>
+            <h2 class="section-title">How It Works</h2>
             <div class="steps">
                 <div class="step">
                     <div class="step-number">1</div>
-                    <h3>Загрузите файл</h3>
-                    <p>Выберите Excel файл для конвертации через удобный интерфейс загрузки</p>
+                    <h3>Upload File</h3>
+                    <p>Select an Excel file for conversion via our user-friendly upload interface</p>
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
-                    <h3>Выберите формат</h3>
-                    <p>Укажите желаемый выходной формат: XLS, XLSX, CSV, ODS или HTML</p>
+                    <h3>Choose Format</h3>
+                    <p>Select your desired output format: XLS, XLSX, CSV, ODS, or HTML</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
-                    <h3>Настройте параметры</h3>
-                    <p>Опционально настройте дополнительные параметры конвертации</p>
+                    <h3>Adjust Settings</h3>
+                    <p>Optionally configure additional conversion parameters</p>
                 </div>
                 <div class="step">
                     <div class="step-number">4</div>
-                    <h3>Скачайте результат</h3>
-                    <p>Получите преобразованный файл мгновенно после обработки</p>
+                    <h3>Get the converted file</h3>
+                    <p>The finished file is automatically downloaded in the browser.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Преимущества -->
     <section id="benefits" class="features" style="background: var(--background);">
         <div class="container">
-            <h2 class="section-title">Почему выбирают нас</h2>
+            <h2 class="section-title">Why Choose Us</h2>
             <div class="features-grid">
                 <div class="feature-card">
-                    <h3>100% точность данных</h3>
-                    <p>Гарантируем полное сохранение всех данных, формул и вычислений</p>
+                    <h3>100% Data Accuracy</h3>
+                    <p>We guarantee complete preservation of all data, formulas, and calculations</p>
                 </div>
                 <div class="feature-card">
-                    <h3>Кроссплатформенность</h3>
-                    <p>Работает на любом устройстве и операционной системе</p>
+                    <h3>100% FREE</h3>
+                    <p>This service is absolutely free</p>
                 </div>
                 <div class="feature-card">
-                    <h3>Простота использования</h3>
-                    <p>Интуитивно понятный интерфейс без необходимости установки ПО</p>
+                    <h3>Easy to Use</h3>
+                    <p>Intuitive interface with no software installation required</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Подвал -->
     <footer id="contact">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-column">
                     <h3>ExcelMaster</h3>
-                    <p>Профессиональное решение для конвертации Excel файлов с 2024 года</p>
+                    <p>Professional Excel file conversion solution since 2024</p>
                 </div>
                 <div class="footer-column">
-                    <h3>Навигация</h3>
+                    <h3>Navigation</h3>
                     <ul class="footer-links">
-                        <li><a href="#features">Возможности</a></li>
-                        <li><a href="#how-it-works">Как это работает</a></li>
-                        <li><a href="#benefits">Преимущества</a></li>
+                        <li><a href="#features">Capabilities</a></li>
+                        <li><a href="#how-it-works">How It Works</a></li>
+                        <li><a href="#benefits">Benefits</a></li>
                     </ul>
                 </div>
                 <div class="footer-column">
-                    <h3>Контакты</h3>
+                    <h3>Contact</h3>
                     <ul class="footer-links">
-                        <li>Email: info@excelmaster.ru</li>
-                        <li>Телефон: +7 (999) 123-45-67</li>
-                        <li>Техническая поддержка: 24/7</li>
+                        <li>Email: info@excelmaster.com</li>
+                        <li>Phone: +7 (999) 123-45-67</li>
+                        <li>Support: 24/7</li>
                     </ul>
                 </div>
             </div>
             <div class="copyright">
-                <p>&copy; 2024 ExcelMaster. Все права защищены.</p>
+                <p>&copy; 2024 ExcelMaster. All rights reserved.</p>
             </div>
         </div>
     </footer>
