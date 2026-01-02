@@ -11,7 +11,7 @@ class AuthController extends Controller
 {
     public function showRegister()
     {
-        return view('auth.register');
+        return view('auth.signup');
     }
 
     public function showLogin()
@@ -24,7 +24,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:6|confirmed'
+            'password' => 'required|string|min:7|confirmed'
         ]);
 
         $user = User::create($validated);
