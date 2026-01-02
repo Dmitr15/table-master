@@ -1,0 +1,171 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+
+:root {
+    --accent-color: #c2c0ce;
+    --base-color: white;
+    --text-color: #2e2b41;
+    --input-color: #e2e1e6;
+    --input-active: #757481;
+    --error-color: #f06272;
+}
+
+html {
+    font-family: Poppins, Segoe UI, sans-serif;
+    font-size: 12pt;
+    text-align: center;
+    color: var(--text-color);
+}
+
+body {
+    min-height: 100vh;
+    background-image: url("../img/pexels-goumbik-669613.jpg");
+    background-size: cover;
+    background-position: right;
+    overflow: hidden;
+}
+
+.wrapper {
+    box-sizing: border-box;
+    background-color: var(--base-color);
+    height: 100vh;
+    width: max(40%, 600px);
+    padding: 10px;
+    border-radius: 20px 20px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+h1 {
+    font-size: 3rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+form {
+    width: min(400px, 100%);
+    margin-top: 20px;
+    margin-bottom: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.input-field {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.label {
+    flex-shrink: 0;
+    height: 50px;
+    width: 50px;
+    background-color: var(--accent-color);
+    border-radius: 10px 0 0 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.input-line {
+    box-sizing: border-box;
+    flex-grow: 1;
+    min-width: 0;
+    height: 50px;
+    padding: 1em;
+    border-left: none !important;
+    font: inherit;
+    border-radius: 0 10px 10px 0;
+    border: 2px solid var(--input-color);
+    background-color: var(--input-color);
+}
+
+.input-line:hover {
+    transition: 150ms ease;
+    border-color: var(--accent-color);
+}
+
+.input-field:has(.input-line:focus) label {
+    background-color: var(--input-active);
+}
+
+.button {
+    margin-top: 10px;
+    border: none;
+    border-radius: 1000px;
+    padding: 0.85em 4em;
+    background-color: var(--accent-color);
+    font: inherit;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.button:hover {
+    transition: 300ms ease;
+    background-color: var(--input-active);
+}
+
+.login-link {
+    font-size: 15px;
+}
+
+.login-link a {
+    color: var(--input-active);
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 950px) {
+    .wrapper {
+        width: 100%;
+    }
+    body {
+        background: none;
+    }
+}
+
+.input-field.incorrect label {
+    background-color: var(--error-color) !important;
+}
+
+.input-field.incorrect input {
+    border-color: var(--error-color);
+}
+
+.errors {
+    color: var(--error-color);
+}
+
+.breadcrumbs {
+    font-size: 14px;
+    margin-bottom: 55px;
+    text-align: start;
+}
+
+.breadcrumbs a {
+    color: var(--input-active);
+    cursor: pointer;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.checkbox {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.checkbox label{
+  font-size: 16px;
+  width: 100%;
+}
