@@ -35,52 +35,21 @@
 
 Реализована функция периодической проверки статуса конвертации (через AJAX), позволяющая уведомлять пользователя о состоянии задачи.
 
-## Архитектура приложения
-
-### Основные компоненты
-
-**Контроллеры**
-
--   `FileController` – загрузка и управление файлами (CRUD-операции)
--   `ProcessFileController` – запуск различных задач конвертации (методы вроде `xlsToXlsx`, `excelToCsv` и т.д.)
--   `DownloadController` – скачивание файлов, проверка статуса конвертации
-
-**Job (`ConvertionJob`)**
-
--   Асинхронное выполнение задач по конвертации файлов
--   В зависимости от типа конвертации вызывается соответствующий метод, обновляющий статус и путь результата в базе данных
-
-**Модель `UserFile`**
-Хранит информацию о загруженных файлах, включая:
-
--   `original_name` – оригинальное имя файла
--   `path` – путь к загруженному файлу
--   `output_path` – путь к файлу после конвертации
--   `status` – текущий статус конвертации (например, processing, completed)
-
-**Очереди (Queues)**
-
--   Все задачи по конвертации отправляются в очередь Laravel
--   Позволяет обрабатывать задачи асинхронно и не блокировать выполнение HTTP-запросов
-
-**Внешние библиотеки**
-
--   PhpSpreadsheet
--   OpenSpout
-
 ## Установка и настройка
 
 ### Требования
 
 -   PHP 8.2+
 -   Composer
--   Laravel 12
+-   Laravel 11+
 -   Установленный XAMMP
 -   git
 
 ### Шаги установки
 
-1. **Клонирование репозитория**
+1. **Установить последнюю версию XAMMP**
+
+2. **В папке xampp\htdocs выполнить клонирование репозитория**
     ```bash
     git clone https://github.com/Dmitr15/table-master.git
     ```
@@ -89,20 +58,41 @@
     ```bash
     composer install
     ```
+    
 4. **Выполните миграции для создания необходимых таблиц**
     ```bash
     php artisan migrate
     ```
-5. **Настройка очереди, в отдельном терминале**
+
+5. **Запустить клиентскую часть в отдельном терминале**
+    ```bash
+    npm run dev
+    ```
+    
+6. **Запустить сервер в отдельном терминале**
+    ```bash
+    php artisan serve
+    ```
+    
+7. **Настройка очереди, в отдельном терминале**
     ```bash
     php artisan queue:work
     ```
 
-6. **Запустить клиентскую часть в отдельном терминале**
-    ```bash
-    npm run dev
-    ```
-7. **Запустить сервер в отдельном терминале**
-    ```bash
-    php artisan serve
-    ```
+    ## Экранные формы
+
+    ### Страница регистрации
+    <img width="1909" height="953" alt="image" src="https://github.com/user-attachments/assets/7864ec12-b84d-4a1f-9076-a59988f7c5a4" />
+
+    ### Страница логина
+    <img width="1908" height="953" alt="image" src="https://github.com/user-attachments/assets/0c8eb299-fe35-4d66-9024-31a6e0c4ee58" />
+
+    ### Главная страница
+
+    <img width="1897" height="942" alt="image" src="https://github.com/user-attachments/assets/ddc01ff5-baba-48d4-b406-b28772c9ae70" />
+    <img width="1899" height="950" alt="image" src="https://github.com/user-attachments/assets/75e1ef3c-0dc1-45b8-a90b-122a3c2a2a07" />
+    <img width="1900" height="951" alt="image" src="https://github.com/user-attachments/assets/188ffeee-4c6c-4046-8d73-7b588f023e0f" />
+    <img width="1898" height="950" alt="image" src="https://github.com/user-attachments/assets/4a8c9c2a-e637-4213-9753-3d85a2cfac03" />
+    
+    ### Страница для работы с файлами
+    <img width="1898" height="953" alt="image" src="https://github.com/user-attachments/assets/19ff4337-aec8-43ff-93e0-42e4a248714e" />
