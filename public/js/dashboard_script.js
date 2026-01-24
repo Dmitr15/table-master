@@ -305,3 +305,58 @@ document.addEventListener('DOMContentLoaded', function () {
         return texts[conversionType] || 'Convert';
     }
 });
+
+
+// Отображение имени выбранного файла в форме загрузки
+const fileInput = document.getElementById('xls_file');
+const fileNameDisplay = document.getElementById('file-name');
+
+if (fileInput && fileNameDisplay) {
+    fileInput.addEventListener('change', function () {
+
+        const allowedTypes = ['.xls', '.xlsx'];
+        const maxSize = 850 * 1024 * 1024; 
+
+        if (this.files[0]) {
+            const fileExt = this.files[0].name.toLowerCase().split('.').pop();
+
+            if (!allowedTypes.includes('.' + fileExt)) {
+                alert('Please select Excel files only (.xls, .xlsx)');
+                this.value = '';
+                return;
+            }
+
+            if (this.files[0].size > maxSize) {
+                alert('File size must be less than 10MB');
+                this.value = '';
+                return;
+            }
+        }
+
+        if (this.files && this.files.length > 0) {
+            // Отображаем имя файла
+            const fileName = this.files[0].name;
+            const fileSize = (this.files[0].size / 1024 / 1024).toFixed(2);
+
+            // Ограничиваем длину имени файла
+            let displayName = fileName;
+            if (fileName.length > 30) {
+                displayName = fileName.substring(0, 15) + '...' + fileName.substring(fileName.length - 15);
+            }
+
+            fileNameDisplay.textContent = `${displayName} (${fileSize} MB)`;
+            fileNameDisplay.classList.add('file-selected');
+        } else {
+            fileNameDisplay.textContent = 'No file selected';
+            fileNameDisplay.classList.remove('file-selected');
+        }
+    });
+
+    // Проверяем, есть ли уже выбранный файл при загрузке страницы
+    if (fileInput.files.length > 0) {
+        const fileName = fileInput.files[0].name;
+        const fileSize = (fileInput.files[0].size / 1024 / 1024).toFixed(2);
+        fileNameDisplay.textContent = `${fileName} (${fileSize} MB)`;
+        fileNameDisplay.classList.add('file-selected');
+    }
+}

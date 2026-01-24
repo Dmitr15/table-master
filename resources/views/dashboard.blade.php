@@ -149,7 +149,7 @@
                     @csrf
                     <div class="upload">
                         <label for="xls_file">Choose file</label>
-                        <input type="file" name="xls_file" id="xls_file">
+                        <input type="file" name="xls_file" id="xls_file" accept=".xls,.xlsx">
                         <p class="file-name" id="file-name">No file selected</p>
                         @error('xls_file')
                             <p class="error">{{$message}}</p>
